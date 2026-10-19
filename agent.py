@@ -83,9 +83,11 @@ async def call(client: Client, tool: str, args: dict):
 
 
 async def triage(
-    repo: str, number: int, model: str = "llama3.2", defended: bool = True, inject: tuple[str, str] | None = None
+    repo: str, number: int, model: str = "llama3.2", defended: bool = True,
+    inject: tuple[str, str] | None = None, taint: bool = False,
 ) -> Run:
-    server = StdioServerParameters(command=sys.executable, args=[str(Path(__file__).with_name("server.py"))])
+    env = {"TAINT_TRACKING": "true"} if taint else None
+    server = StdioServerParameters(command=sys.executable, args=[str(Path(__file__).with_name("server.py"))], env=env)
     log: list[ToolCall] = []
     async with Client(server) as client:
         if defended:

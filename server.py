@@ -25,6 +25,11 @@ def _require_bound(repo: str) -> None:
         raise ToolError(f"Blocked: session is bound to {bound} and cannot access {repo}")
 
 
+def _require_untainted() -> None:
+    if os.getenv("TAINT_TRACKING", "false").lower() == "true" and _BOUND.get("tainted"):
+        raise ToolError("Blocked: cannot post after reading file contents in this session (taint tracking)")
+
+
 class IssueSummary(BaseModel):
     number: int
     title: str
@@ -122,6 +127,7 @@ async def get_file(
     f = await _github(f"/repos/{repo}/contents/{path}")
     if not isinstance(f, dict) or f.get("encoding") != "base64":
         raise ToolError(f"{path} in {repo} is not a file")
+    _BOUND["tainted"] = True
     return FileContent(repo=repo, path=path, content=base64.b64decode(f["content"]).decode(errors="replace")[:20000])
 
 
@@ -145,6 +151,7 @@ async def post_comment(
     body: Annotated[str, Field(min_length=1, max_length=5000)],
 ) -> WriteResult:
     action = f"post a comment on {repo}#{number}"
+    _require_untainted()
     if _check_write(repo):
         return WriteResult(dry_run=True, action=f"would {action}")
     c = await _github(f"/repos/{repo}/issues/{number}/comments", "POST", {"body": body})

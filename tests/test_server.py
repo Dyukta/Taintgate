@@ -137,6 +137,24 @@ async def test_post_comment_rejects_empty_body(sandbox):
     assert result.is_error
 
 
+async def test_taint_blocks_post_after_get_file(sandbox, monkeypatch):
+    monkeypatch.setenv("TAINT_TRACKING", "true")
+    async with Client(server) as client:
+        before = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "hi"})
+        await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
+        after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "leak"})
+    assert not before.is_error, before.content
+    assert after.is_error
+    assert "taint" in after.content[0].text
+
+
+async def test_taint_off_by_default(sandbox):
+    async with Client(server) as client:
+        await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
+        after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "ok"})
+    assert not after.is_error, after.content
+
+
 def test_keywords_drops_short_and_stop_words():
     assert keywords('Using transport="stdio" closes real stdio, causing ValueError') == (
         'Using OR transport="stdio OR closes OR real'

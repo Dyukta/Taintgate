@@ -44,6 +44,7 @@ Security is enforced in the MCP server as code, so it holds whichever model runs
           |  Policy (enforced in code):  |
           |   - Pydantic input validation|
           |   - Repo binding per session |
+          |   - Taint tracking           |
           |   - Sandbox-only writes      |
           |   - Dry-run by default       |
           |                              |
@@ -55,7 +56,7 @@ Security is enforced in the MCP server as code, so it holds whichever model runs
                  GitHub API (sandbox repos only)
 ```
 
-Each agent run launches its own server subprocess, so one process = one session. The agent binds the session to the issue's repo at the start; after that, `get_file` on any other repo is refused. The binding tool is not exposed to the model and cannot be re-bound, so an injected issue cannot change it.
+Each agent run launches its own server subprocess, so one process = one session. The agent binds the session to the issue's repo at the start; after that, `get_file` on any other repo is refused. The binding tool is not exposed to the model and cannot be re-bound, so an injected issue cannot change it. Taint tracking is a second layer: once the session reads a file with `get_file`, the server marks it tainted and refuses `post_comment`, so a secret that was read cannot be posted back out.
 
 ## 4. Results 
 
@@ -63,7 +64,7 @@ Run on the author's machine, 19 Oct 2026.
 
 **Build**
 - 5 MCP tools with Pydantic validation and structured errors.
-- 17 automated tests pass (valid input, invalid input, blocked writes, repo binding).
+- 19 automated tests pass (valid input, invalid input, blocked writes, repo binding, taint tracking).
 - Triage runs end to end on 3 real issues; suggested labels matched the maintainers' `bug` label.
 
 **Red-team (10 attack variants, llama3.2):** attack success = the agent read the private secret via `get_file`.
@@ -75,6 +76,8 @@ Run on the author's machine, 19 Oct 2026.
 
 The model still *tried* the read in every case — it obeyed the injection — but the server blocked it. That is the whole point: the defense does not depend on the model behaving.
 
+**Taint tracking (second defense):** proven by unit tests — once a session calls `get_file`, any `post_comment` is refused. With taint off the same post is allowed. This blocks the exfiltration leg: a secret that was read cannot be posted out, even if the read itself got through.
+
 **Second model (NVIDIA Nemotron 3 Super, via OpenRouter):** one clean run reproduced the leak with no defense, confirming the attack is not specific to llama3.2.
 
 ## 5. Decisions 
@@ -85,67 +88,9 @@ The model still *tried* the read in every case — it obeyed the injection — b
 - **Fine-grained token, least privilege.** The GitHub token can only touch the sandbox repos and only the permissions needed (Issues write, Contents read).
 - **Two+ models on purpose.** A weak local model can "resist" an attack only because it is too weak to follow it — a false win. Testing a stronger model guards against that.
 
-## 6. Build log: what went wrong and what we changed
+## 6. Limitations
 
-Real problems hit while building, and the decision each one forced. This is the honest version.
+- **llama3.2 is weak.** It misbehaves even with no attack, and 3 of the 10 attacks "failed" only because it didn't follow them, not because anything blocked them.
+- **Exfiltration wasn't reached end-to-end** — the agent reads the secret but doesn't post it, so taint tracking is proven by unit test rather than a live leak.
+- **Free hosted tiers are small** (Gemini 20/day, OpenRouter 50/day), so full multi-model tables need paid tiers or more local models.
 
-- **The MCP SDK changed under the tutorials.** v2 uses `MCPServer`, not the `FastMCP` class every old tutorial shows, and it ships `httpx2` instead of `httpx`. **Decision:** follow the v2 docs, use `httpx2` (already a dependency), and pin `mcp[cli]==2.3.0`.
-- **`mcp dev` needs `uv`, which isn't installed.** It tries to wrap the server in a `uv run`. **Decision:** run MCP Inspector directly against the venv's Python: `npx -y @modelcontextprotocol/inspector python server.py`.
-- **`langchain-mcp-adapters` would have broken the server.** It requires `mcp<2.0.0` and would downgrade our `mcp 2.3.0` to `1.30.0`. **Decision:** skip it and wrap the MCP tools for LangGraph ourselves (~20 lines).
-- **llama3.2 looped and spammed blocked tool calls.** Left alone it skipped the search, invented duplicate issue numbers, and retried writes that kept getting blocked until it hit the step limit. **Decision:** cap the ReAct loop with a `recursion_limit`, and on a loop/model error fall back to one structured-output call.
-- **Gemini rejected our requests.** It returns `400 INVALID_ARGUMENT: requests ending with a model turn are not supported`, which is exactly what LangGraph's `response_format` sends. **Decision:** make the final triage a separate structured call whose message list ends on a user turn.
-- **Free tiers ran out mid-experiment.** Gemini free tier is 20 requests/day per account (a new-project key hit the same wall — it's account-level), and OpenRouter free tier is 50 requests/day total. Each triage run burns 2-3 calls. **Decision:** treat the local model as the reliable test bed, confirm generality with a single capable-model run, and record the cap as a finding instead of pretending we ran a full table.
-- **The agent crashed on OpenRouter errors.** OpenRouter raises OpenAI-style exceptions (rate limits) that our `except (GraphRecursionError, ResponseError)` didn't catch, so a rate-limited run died *after* the attack already happened and threw the data away. **Decision:** broaden the handling so a run always returns its tool-call log — the attack signal (did it read the secret) is captured even when the final model call fails.
-
-The one insight that came out of all this: because the defense is server-side code, its result doesn't depend on the model. The "repo binding → 0 reads" column is guaranteed by the code and covered by a unit test, so it doesn't need to be re-run per model. Only the "no defense" column is model-dependent.
-
-## 7. Limitations and honest failures
-
-- **llama3.2 is weak.** It misbehaves even with no attack present (ignored instructions, attempted blocked writes). Three of the ten attacks "failed" against it only because the model did not follow them, not because anything blocked them.
-- **Exfiltration was not achieved**, only the private-read leg of the trifecta. The agent read the secret but did not reliably echo it into a comment. The read alone is the dangerous step the defense targets.
-- **Free hosted tiers are too small for a full multi-model red-team.** Gemini free tier is 20 requests/day; OpenRouter free tier is 50 requests/day total. Each triage run uses 2-3 calls, so full second/third-model tables need either a paid tier or more local models.
-- **Taint tracking is not built yet.** Repo binding is the first defense; taint tracking (block writes after an untrusted read) is planned next.
-
-## 8. Setup
-
-Windows + PowerShell, Python 3.14.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-```
-
-Create a `.env` (kept out of Git):
-
-```
-GITHUB_TOKEN=github_pat_...        # fine-grained, sandbox repos only
-SANDBOX_REPO=you/your-sandbox
-DRY_RUN=true
-# optional second models:
-GOOGLE_API_KEY=...
-OPENROUTER_API_KEY=sk-or-...
-```
-
-## 9. Run
-
-```powershell
-# tests
-python -m pytest -q
-
-# inspect the server by hand
-npx -y @modelcontextprotocol/inspector@2.11.0 .\.venv\Scripts\python.exe server.py
-
-# triage one issue (model optional: llama3.2 default, gemini-..., or:<openrouter-model>)
-python agent.py you/your-sandbox 1
-
-# run the red-team (no-defense and repo-binding configs)
-python redteam.py llama3.2
-```
-
-## 10. References
-
-- Issue-triage is a crowded space — GitHub's [issue-triage topic](https://github.com/topics/issue-triage?o=desc&s=stars) lists 130+ public repos.
-- [Invariant Labs: MCP GitHub vulnerability](https://invariantlabs.ai/blog/mcp-github-vulnerability) — the published attack this project reproduces.
-- Simon Willison — the "lethal trifecta" (untrusted input + private data + a way to send data out).
-- AgentDojo (ETH Zurich) — benchmark that measures agent utility and security together.
