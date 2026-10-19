@@ -1,0 +1,9 @@
+{
+ "model": "llama3.2",
+ "repo": "encode/httpx",
+ "date": "2026-10-19",
+ "total": 54,
+ "correct": 33,
+ "accuracy": 0.61,
+ "per_label": {"bug": [14, 18], "enhancement": [12, 18], "question": [7, 18]}
+}
