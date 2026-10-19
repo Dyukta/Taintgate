@@ -56,7 +56,7 @@ Security is enforced in the MCP server as code, so it holds whichever model runs
                  GitHub API (sandbox repos only)
 ```
 
-Each agent run launches its own server subprocess, so one process = one session. The agent binds the session to the issue's repo at the start; after that, `get_file` on any other repo is refused. The binding tool is not exposed to the model and cannot be re-bound, so an injected issue cannot change it. Taint tracking is a second layer: once the session reads a file with `get_file`, the server marks it tainted and refuses `post_comment`, so a secret that was read cannot be posted back out.
+Each agent run launches its own server subprocess, so one process = one session. The server reads its bound repo from the `BOUND_REPO` env var at launch and every tool refuses any other repo. If `BOUND_REPO` is not set, every tool refuses (fail closed). There is no tool to change it, so an injected issue cannot. `BOUND_REPO=*` turns binding off and is only used for the undefended red-team baseline. Taint tracking is a second layer: once the session reads a file with `get_file`, the server marks it tainted and refuses `post_comment`, so a secret that was read cannot be posted back out.
 
 ## 4. Results 
 
@@ -85,7 +85,7 @@ The model still *tried* the read in every case, it obeyed the injection, but the
 ## 5. Decisions 
 
 - **Enforce security in the server, not the prompt.** A prompt like "ignore malicious instructions" is probabilistic and the model can be talked out of it. We proved this: the model followed the injection, and only the server-side check stopped it.
-- **Repo binding via per-session server state.** Because each agent run spawns its own server subprocess, a module-level bound repo *is* per-session state, simple and isolated, no cross-run leakage.
+- **Repo binding via server config.** The bound repo comes from `BOUND_REPO`, set by whoever launches the server, not by any tool call. Taint state is still module-level, which is per-session only because each agent run spawns its own stdio subprocess; it would leak across sessions over HTTP transport.
 - **Writes dry-run and sandbox-only by default.** Safe by default; a real write needs an explicit `DRY_RUN=false` and the correct sandbox repo.
 - **Fine-grained token, least privilege.** The GitHub token can only touch the sandbox repos and only the permissions needed (Issues write, Contents read).
 - **Two+ models on purpose.** A weak local model can "resist" an attack only because it is too weak to follow it, a false win. Testing a stronger model guards against that.

@@ -18,17 +18,19 @@ SEGMENT = r"[\w.-]*[\w-][\w.-]*"
 
 Repo = Annotated[str, Field(pattern=rf"^{SEGMENT}/{SEGMENT}$", description="owner/name, e.g. python/cpython")]
 
-_BOUND: dict[str, str] = {}
+_SESSION: dict[str, bool] = {}
 
 
 def _require_bound(repo: str) -> None:
-    bound = _BOUND.get("repo")
-    if bound and repo.lower() != bound.lower():
+    bound = os.getenv("BOUND_REPO", "")
+    if not bound:
+        raise ToolError("Blocked: BOUND_REPO is not set")
+    if bound != "*" and repo.lower() != bound.lower():
         raise ToolError(f"Blocked: session is bound to {bound} and cannot access {repo}")
 
 
 def _require_untainted() -> None:
-    if os.getenv("TAINT_TRACKING", "false").lower() == "true" and _BOUND.get("tainted"):
+    if os.getenv("TAINT_TRACKING", "false").lower() == "true" and _SESSION.get("tainted"):
         raise ToolError("Blocked: cannot post after reading file contents in this session (taint tracking)")
 
 
@@ -94,26 +96,21 @@ def _summary(i: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-@server.tool(description="Bind this session to one repo. Infrastructure calls this once before triage.")
-async def bind_repo(repo: Repo) -> str:
-    if "repo" in _BOUND and _BOUND["repo"].lower() != repo.lower():
-        raise ToolError(f"Session is already bound to {_BOUND['repo']}")
-    _BOUND["repo"] = repo
-    return f"Bound to {repo}"
-
-
 @server.tool(description="Search issues (not pull requests) in one GitHub repo by keywords.")
 async def search_issues(
     repo: Repo,
     query: Annotated[str, Field(min_length=1, max_length=200)],
     limit: Annotated[int, Field(ge=1, le=30)] = 10,
 ) -> list[IssueSummary]:
+    _require_bound(repo)
     data = await _github("/search/issues", q=f"{query} repo:{repo} is:issue", per_page=limit)
-    return [IssueSummary(**_summary(i)) for i in data["items"]]
+    own = f"{GITHUB_API}/repos/{repo}".lower()
+    return [IssueSummary(**_summary(i)) for i in data["items"] if i["repository_url"].lower() == own]
 
 
 @server.tool(description="Get one GitHub issue with its body, author and comment count.")
 async def get_issue(repo: Repo, number: Annotated[int, Field(ge=1)]) -> IssueDetail:
+    _require_bound(repo)
     i = await _github(f"/repos/{repo}/issues/{number}")
     if "pull_request" in i:
         raise ToolError(f"#{number} in {repo} is a pull request, not an issue")
@@ -129,7 +126,7 @@ async def get_file(
     f = await _github(f"/repos/{repo}/contents/{path}")
     if not isinstance(f, dict) or f.get("encoding") != "base64":
         raise ToolError(f"{path} in {repo} is not a file")
-    _BOUND["tainted"] = True
+    _SESSION["tainted"] = True
     return FileContent(repo=repo, path=path, content=base64.b64decode(f["content"]).decode(errors="replace")[:20000])
 
 
@@ -140,6 +137,7 @@ async def add_label(
     label: Annotated[str, Field(min_length=1, max_length=50)],
 ) -> WriteResult:
     action = f"add label '{label}' to {repo}#{number}"
+    _require_bound(repo)
     if _check_write(repo):
         return WriteResult(dry_run=True, action=f"would {action}")
     await _github(f"/repos/{repo}/issues/{number}/labels", "POST", {"labels": [label]})
@@ -153,6 +151,7 @@ async def post_comment(
     body: Annotated[str, Field(min_length=1, max_length=5000)],
 ) -> WriteResult:
     action = f"post a comment on {repo}#{number}"
+    _require_bound(repo)
     _require_untainted()
     if _check_write(repo):
         return WriteResult(dry_run=True, action=f"would {action}")

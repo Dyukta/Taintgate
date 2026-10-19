@@ -86,12 +86,10 @@ async def triage(
     repo: str, number: int, model: str = "llama3.2", defended: bool = True,
     inject: tuple[str, str] | None = None, taint: bool = False,
 ) -> Run:
-    env = {"TAINT_TRACKING": "true"} if taint else None
+    env = {"BOUND_REPO": repo if defended else "*", "TAINT_TRACKING": str(taint).lower()}
     server = StdioServerParameters(command=sys.executable, args=[str(Path(__file__).with_name("server.py"))], env=env)
     log: list[ToolCall] = []
     async with Client(server) as client:
-        if defended:
-            await call(client, "bind_repo", {"repo": repo})
         if inject:
             title, body = inject
             found = {"result": []}

@@ -57,10 +57,11 @@ async def test_get_issue_rejects_zero():
 
 
 @pytest.fixture(autouse=True)
-def unbound(monkeypatch):
+def bound(monkeypatch):
     import server
 
-    monkeypatch.setattr(server, "_BOUND", {})
+    monkeypatch.setenv("BOUND_REPO", REPO)
+    monkeypatch.setattr(server, "_SESSION", {})
 
 
 async def test_get_file_reads_public_file():
@@ -69,22 +70,41 @@ async def test_get_file_reads_public_file():
     assert "MCP" in result.structured_content["content"]
 
 
-async def test_bound_repo_blocks_get_file_elsewhere():
-    async with Client(server) as client:
-        await client.call_tool("bind_repo", {"repo": REPO})
-        same = await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
-        other = await client.call_tool("get_file", {"repo": "octocat/Hello-World", "path": "README"})
-    assert not same.is_error, same.content
-    assert other.is_error
-    assert "bound to" in other.content[0].text
+ALL_TOOLS = [
+    ("search_issues", {"query": "stdio"}),
+    ("get_issue", {"number": 1}),
+    ("get_file", {"path": "README"}),
+    ("add_label", {"number": 1, "label": "bug"}),
+    ("post_comment", {"number": 1, "body": "hi"}),
+]
 
 
-async def test_bind_repo_cannot_rebind():
+@pytest.mark.parametrize("tool, args", ALL_TOOLS)
+async def test_bound_repo_blocks_other_repo(tool, args):
+    result = await call(tool, {"repo": "octocat/Hello-World", **args})
+    assert result.is_error
+    assert "bound to" in result.content[0].text
+
+
+@pytest.mark.parametrize("tool, args", ALL_TOOLS)
+async def test_unset_bound_repo_blocks_everything(monkeypatch, tool, args):
+    monkeypatch.delenv("BOUND_REPO")
+    result = await call(tool, {"repo": REPO, **args})
+    assert result.is_error
+    assert "BOUND_REPO is not set" in result.content[0].text
+
+
+async def test_bind_repo_tool_is_gone():
     async with Client(server) as client:
-        await client.call_tool("bind_repo", {"repo": REPO})
-        again = await client.call_tool("bind_repo", {"repo": "octocat/Hello-World"})
-    assert again.is_error
-    assert "already bound" in again.content[0].text
+        names = {t.name for t in (await client.list_tools()).tools}
+    assert "bind_repo" not in names
+
+
+async def test_search_drops_injected_repo_qualifier():
+    result = await call("search_issues", {"repo": REPO, "query": "readme repo:octocat/Hello-World", "limit": 30})
+    assert not result.is_error, result.content
+    for issue in result.structured_content["result"]:
+        assert issue["url"].startswith(f"https://github.com/{REPO}/issues/")
 
 
 async def test_get_file_rejects_directory_and_traversal():
@@ -100,10 +120,9 @@ async def test_get_file_rejects_directory_and_traversal():
         ("Dyukta/..", "README.md"),
     ],
 )
-async def test_traversal_rejected_by_validation(repo, path):
-    async with Client(server) as client:
-        await client.call_tool("bind_repo", {"repo": "Dyukta/Taintgate-sandbox"})
-        result = await client.call_tool("get_file", {"repo": repo, "path": path})
+async def test_traversal_rejected_by_validation(monkeypatch, repo, path):
+    monkeypatch.setenv("BOUND_REPO", "Dyukta/Taintgate-sandbox")
+    result = await call("get_file", {"repo": repo, "path": path})
     assert result.is_error
     assert "pattern" in result.content[0].text
 
@@ -111,6 +130,7 @@ async def test_traversal_rejected_by_validation(repo, path):
 @pytest.fixture
 def sandbox(monkeypatch):
     monkeypatch.setenv("SANDBOX_REPO", "me/Sandbox")
+    monkeypatch.setenv("BOUND_REPO", "me/Sandbox")
     monkeypatch.setenv("DRY_RUN", "true")
 
 
@@ -135,7 +155,8 @@ async def test_write_dry_run_on_sandbox(sandbox, tool, args):
         ("post_comment", {"number": 1, "body": "hi"}),
     ],
 )
-async def test_write_blocked_outside_sandbox(sandbox, tool, args):
+async def test_write_blocked_outside_sandbox(sandbox, monkeypatch, tool, args):
+    monkeypatch.setenv("BOUND_REPO", "*")
     result = await call(tool, {"repo": REPO, **args})
     assert result.is_error
     assert "only allowed on me/Sandbox" in result.content[0].text
@@ -155,6 +176,7 @@ async def test_post_comment_rejects_empty_body(sandbox):
 
 async def test_taint_blocks_post_after_get_file(sandbox, monkeypatch):
     monkeypatch.setenv("TAINT_TRACKING", "true")
+    monkeypatch.setenv("BOUND_REPO", "*")
     async with Client(server) as client:
         before = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "hi"})
         await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
@@ -164,7 +186,8 @@ async def test_taint_blocks_post_after_get_file(sandbox, monkeypatch):
     assert "taint" in after.content[0].text
 
 
-async def test_taint_off_by_default(sandbox):
+async def test_taint_off_by_default(sandbox, monkeypatch):
+    monkeypatch.setenv("BOUND_REPO", "*")
     async with Client(server) as client:
         await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
         after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "ok"})
