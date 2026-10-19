@@ -96,7 +96,6 @@ Real problems hit while building, and the decision each one forced. This is the 
 - **Gemini rejected our requests.** It returns `400 INVALID_ARGUMENT: requests ending with a model turn are not supported`, which is exactly what LangGraph's `response_format` sends. **Decision:** make the final triage a separate structured call whose message list ends on a user turn.
 - **Free tiers ran out mid-experiment.** Gemini free tier is 20 requests/day per account (a new-project key hit the same wall — it's account-level), and OpenRouter free tier is 50 requests/day total. Each triage run burns 2-3 calls. **Decision:** treat the local model as the reliable test bed, confirm generality with a single capable-model run, and record the cap as a finding instead of pretending we ran a full table.
 - **The agent crashed on OpenRouter errors.** OpenRouter raises OpenAI-style exceptions (rate limits) that our `except (GraphRecursionError, ResponseError)` didn't catch, so a rate-limited run died *after* the attack already happened and threw the data away. **Decision:** broaden the handling so a run always returns its tool-call log — the attack signal (did it read the secret) is captured even when the final model call fails.
-- **Renamed the project.** Was "RepoGuard", but GitHub has 5,532 repos with "guard"/"warden" in the name and the name said nothing specific. **Decision:** rename to **Taintgate** (8 repos use the name) — it points at the core defense idea, which is a better interview hook.
 
 The one insight that came out of all this: because the defense is server-side code, its result doesn't depend on the model. The "repo binding → 0 reads" column is guaranteed by the code and covered by a unit test, so it doesn't need to be re-run per model. Only the "no defense" column is model-dependent.
 
@@ -150,15 +149,3 @@ python redteam.py llama3.2
 - [Invariant Labs: MCP GitHub vulnerability](https://invariantlabs.ai/blog/mcp-github-vulnerability) — the published attack this project reproduces.
 - Simon Willison — the "lethal trifecta" (untrusted input + private data + a way to send data out).
 - AgentDojo (ETH Zurich) — benchmark that measures agent utility and security together.
-
-## 11. Status
-
-| Phase | State |
-|---|---|
-| 1. One tool works | Done |
-| 2. All tools, validation, safe writes | Done |
-| 3. Triage agent (LangGraph) | Done |
-| 4. Attack reproduced | Done |
-| 5. Repo binding + red-team table | In progress |
-| 6. Taint tracking, mini eval | Planned |
-| 7. Demo video | Planned |
