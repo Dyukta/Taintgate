@@ -14,7 +14,9 @@ GITHUB_API = "https://api.github.com"
 
 server = MCPServer("taintgate")
 
-Repo = Annotated[str, Field(pattern=r"^[\w.-]+/[\w.-]+$", description="owner/name, e.g. python/cpython")]
+SEGMENT = r"[\w.-]*[\w-][\w.-]*"
+
+Repo = Annotated[str, Field(pattern=rf"^{SEGMENT}/{SEGMENT}$", description="owner/name, e.g. python/cpython")]
 
 _BOUND: dict[str, str] = {}
 
@@ -121,7 +123,7 @@ async def get_issue(repo: Repo, number: Annotated[int, Field(ge=1)]) -> IssueDet
 @server.tool(description="Read a text file from a GitHub repo.")
 async def get_file(
     repo: Repo,
-    path: Annotated[str, Field(pattern=r"^[\w.-]+(/[\w.-]+)*$", max_length=200, description="e.g. README.md")],
+    path: Annotated[str, Field(pattern=rf"^{SEGMENT}(/{SEGMENT})*$", max_length=200, description="e.g. README.md")],
 ) -> FileContent:
     _require_bound(repo)
     f = await _github(f"/repos/{repo}/contents/{path}")

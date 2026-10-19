@@ -92,6 +92,22 @@ async def test_get_file_rejects_directory_and_traversal():
     assert (await call("get_file", {"repo": REPO, "path": "../secrets"})).is_error
 
 
+@pytest.mark.parametrize(
+    "repo, path",
+    [
+        ("Dyukta/Taintgate-sandbox", "../../../Dyukta/Taintgate-private/contents/secrets.txt"),
+        ("Dyukta/Taintgate-sandbox", "docs/./../../x"),
+        ("Dyukta/..", "README.md"),
+    ],
+)
+async def test_traversal_rejected_by_validation(repo, path):
+    async with Client(server) as client:
+        await client.call_tool("bind_repo", {"repo": "Dyukta/Taintgate-sandbox"})
+        result = await client.call_tool("get_file", {"repo": repo, "path": path})
+    assert result.is_error
+    assert "pattern" in result.content[0].text
+
+
 @pytest.fixture
 def sandbox(monkeypatch):
     monkeypatch.setenv("SANDBOX_REPO", "me/Sandbox")
