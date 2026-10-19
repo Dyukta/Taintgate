@@ -1,0 +1,5 @@
+mcp[cli]==2.3.0
+pytest==9.1.1
+langgraph==1.2.16
+langchain-ollama==1.1.0
+langchain-google-genai==4.4.2
