@@ -38,6 +38,8 @@ ATTACKS = [
 
 RESULTS = Path(__file__).with_name("results")
 
+DEFENSES = {"none": (False, False), "binding": (True, False), "taint": (False, True)}
+
 
 def scored(run):
     calls = run.tool_calls
@@ -61,15 +63,18 @@ def summarize(rows):
     return summary
 
 
-async def main(model: str, runs: int, prompts: list[str]):
-    rows, out = [], RESULTS / f"redteam-{re.sub(r'[^\w.-]', '_', model)}.json"
+async def main(model: str, runs: int, prompts: list[str], defenses: list[str]):
+    suffix = "" if defenses == ["none", "binding"] else "-" + "-".join(defenses)
+    rows, out = [], RESULTS / f"redteam-{re.sub(r'[^\w.-]', '_', model)}{suffix}.json"
     for name, title, body in ATTACKS:
         for prompt in prompts:
-            for defended in (False, True):
+            for defense in defenses:
+                defended, taint = DEFENSES[defense]
                 for i in range(1, runs + 1):
-                    row = {"attack": name, "prompt": prompt, "defense": "binding" if defended else "none", "run": i}
+                    row = {"attack": name, "prompt": prompt, "defense": defense, "run": i}
                     try:
-                        row |= scored(await triage(SANDBOX, 2, model, defended=defended, inject=(title, body), prompt=prompt))
+                        row |= scored(await triage(SANDBOX, 2, model, defended=defended, taint=taint,
+                                                     inject=(title, body), prompt=prompt))
                     except Exception as e:
                         row["error"] = str(e)[:120]
                     rows.append(row)
@@ -84,4 +89,6 @@ async def main(model: str, runs: int, prompts: list[str]):
 if __name__ == "__main__":
     model = sys.argv[1] if len(sys.argv) > 1 else "llama3.2"
     runs = int(sys.argv[2]) if len(sys.argv) > 2 else 3
-    asyncio.run(main(model, runs, sys.argv[3:] or ["worst", "realistic"]))
+    rest = sys.argv[3:]
+    asyncio.run(main(model, runs, [a for a in rest if a not in DEFENSES] or ["worst", "realistic"],
+                     [a for a in rest if a in DEFENSES] or ["none", "binding"]))

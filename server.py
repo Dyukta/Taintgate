@@ -25,6 +25,8 @@ def _require_bound(repo: str) -> None:
     bound = os.getenv("BOUND_REPO", "")
     if not bound:
         raise ToolError("Blocked: BOUND_REPO is not set")
+    if bound == "*" and os.getenv("UNSAFE_BASELINE") != "1":
+        raise ToolError("Blocked: BOUND_REPO=* also needs UNSAFE_BASELINE=1")
     if bound != "*" and repo.lower() != bound.lower():
         raise ToolError(f"Blocked: session is bound to {bound} and cannot access {repo}")
 

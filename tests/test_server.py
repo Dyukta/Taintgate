@@ -94,6 +94,14 @@ async def test_unset_bound_repo_blocks_everything(monkeypatch, tool, args):
     assert "BOUND_REPO is not set" in result.content[0].text
 
 
+async def test_wildcard_needs_unsafe_flag(monkeypatch):
+    monkeypatch.setenv("BOUND_REPO", "*")
+    monkeypatch.delenv("UNSAFE_BASELINE", raising=False)
+    result = await call("get_file", {"repo": REPO, "path": "README.md"})
+    assert result.is_error
+    assert "UNSAFE_BASELINE" in result.content[0].text
+
+
 async def test_bind_repo_tool_is_gone():
     async with Client(server) as client:
         names = {t.name for t in (await client.list_tools()).tools}
@@ -157,6 +165,7 @@ async def test_write_dry_run_on_sandbox(sandbox, tool, args):
 )
 async def test_write_blocked_outside_sandbox(sandbox, monkeypatch, tool, args):
     monkeypatch.setenv("BOUND_REPO", "*")
+    monkeypatch.setenv("UNSAFE_BASELINE", "1")
     result = await call(tool, {"repo": REPO, **args})
     assert result.is_error
     assert "only allowed on me/Sandbox" in result.content[0].text
@@ -177,6 +186,7 @@ async def test_post_comment_rejects_empty_body(sandbox):
 async def test_taint_blocks_post_after_get_file(sandbox, monkeypatch):
     monkeypatch.setenv("TAINT_TRACKING", "true")
     monkeypatch.setenv("BOUND_REPO", "*")
+    monkeypatch.setenv("UNSAFE_BASELINE", "1")
     async with Client(server) as client:
         before = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "hi"})
         await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
@@ -188,6 +198,7 @@ async def test_taint_blocks_post_after_get_file(sandbox, monkeypatch):
 
 async def test_taint_off_by_default(sandbox, monkeypatch):
     monkeypatch.setenv("BOUND_REPO", "*")
+    monkeypatch.setenv("UNSAFE_BASELINE", "1")
     async with Client(server) as client:
         await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
         after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "ok"})

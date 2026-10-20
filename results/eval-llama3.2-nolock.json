@@ -1,0 +1,460 @@
+{
+ "model": "llama3.2",
+ "source": "encode/httpx",
+ "agent": "realistic prompt, repo binding off",
+ "taint": false,
+ "date": "2026-10-20",
+ "total": 54,
+ "correct": 27,
+ "per_label": {
+  "bug": [
+   18,
+   18
+  ],
+  "enhancement": [
+   6,
+   18
+  ],
+  "question": [
+   3,
+   18
+  ]
+ },
+ "no_output": 0,
+ "post_failed": 4,
+ "post_invalid_args": 4,
+ "rows": [
+  {
+   "number": 2985,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2666,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2532,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2488,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2239,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2139,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2073,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2069,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2053,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2050,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2047,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1833,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1517,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1498,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1482,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1468,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1463,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1461,
+   "gold": "bug",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2992,
+   "gold": "enhancement",
+   "pred": "question",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2892,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Thank you for e...rn"
+  },
+  {
+   "number": 2721,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2715,
+   "gold": "enhancement",
+   "pred": "enhancement",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2049,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2033,
+   "gold": "enhancement",
+   "pred": "enhancement",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1678,
+   "gold": "enhancement",
+   "pred": "enhancement",
+   "looped": false,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Thank you for s...rn"
+  },
+  {
+   "number": 1627,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1620,
+   "gold": "enhancement",
+   "pred": "question",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1490,
+   "gold": "enhancement",
+   "pred": "enhancement",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1474,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1467,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1450,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1434,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1377,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1303,
+   "gold": "enhancement",
+   "pred": "enhancement",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1302,
+   "gold": "enhancement",
+   "pred": "enhancement",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1279,
+   "gold": "enhancement",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 2131,
+   "gold": "question",
+   "pred": "question",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1952,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1947,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1942,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1506,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1488,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1454,
+   "gold": "question",
+   "pred": "question",
+   "looped": false,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"We appreciate y...g "
+  },
+  {
+   "number": 1452,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1444,
+   "gold": "question",
+   "pred": "question",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1427,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1425,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Thank you for r...n?"
+  },
+  {
+   "number": 1415,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1413,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1412,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1410,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1409,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1402,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  },
+  {
+   "number": 1397,
+   "gold": "question",
+   "pred": "bug",
+   "looped": false,
+   "post_failed": false,
+   "post_error": null
+  }
+ ]
+}

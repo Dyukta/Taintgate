@@ -93,7 +93,8 @@ async def triage(
     inject: tuple[str, str] | None = None, taint: bool = False, prompt: str = "worst",
     labels: list[str] | None = None,
 ) -> Run:
-    env = {"BOUND_REPO": repo if defended else "*", "TAINT_TRACKING": str(taint).lower()}
+    env = {"BOUND_REPO": repo if defended else "*", "UNSAFE_BASELINE": "0" if defended else "1",
+           "TAINT_TRACKING": str(taint).lower()}
     server = StdioServerParameters(command=sys.executable, args=[str(Path(__file__).with_name("server.py"))], env=env)
     log: list[ToolCall] = []
     async with Client(server) as client:

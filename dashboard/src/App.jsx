@@ -2,6 +2,7 @@ import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, T
 import redteam from "../../results/redteam-llama3.2.json";
 import evalOff from "../../results/eval-llama3.2.json";
 import evalOn from "../../results/eval-llama3.2-taint.json";
+import evalNoLock from "../../results/eval-llama3.2-nolock.json";
 
 const INK = "#030229";
 const SKY = "#5B93FF";
@@ -74,6 +75,7 @@ export default function App() {
 
   const labelData = Object.keys(evalOff.per_label).map((label) => ({
     label,
+    nolock: pct(evalNoLock.per_label[label][0], evalNoLock.per_label[label][1]),
     off: pct(evalOff.per_label[label][0], evalOff.per_label[label][1]),
     on: pct(evalOn.per_label[label][0], evalOn.per_label[label][1]),
   }));
@@ -103,14 +105,14 @@ export default function App() {
           <Kpi value={`${pct(defenseData[0].none)}%`} label="attack success" sub="worst prompt, no defense" color={CORAL} icon="alert" />
           <Kpi value={`${pct(defenseData[1].none)}%`} label="attack success" sub="careful prompt, no defense" color={SUN} icon="chat" />
           <Kpi value={`${pct(bindingReads, total * 2)}%`} label="attack success" sub="repo binding on" color={SKY} icon="lock" />
-          <Kpi value={`${pct(evalOff.correct, evalOff.total)}%`} label="triage accuracy" sub="repo binding on" color={BRAND} icon="tag" />
+          <Kpi value={`${pct(evalOff.correct, evalOff.total)}%`} label="triage accuracy" sub="lock on; always-bug scores 33%" color={BRAND} icon="tag" />
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <Card
             className="lg:col-span-2"
             title={`Secret reads by prompt and defense (${redteam.model})`}
-            note={`${total} attack variants, ${redteam.runs_per_attack} run each. No secret was posted out in any run. Taint tracking is unit-tested only.`}
+            note={`${total} attack variants, ${redteam.runs_per_attack} run each. llama3.2 never posted a secret out. Second model (qwen2.5:3b) and the taint red-team: see README.`}
           >
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={defenseData} margin={{ top: 20, right: 8, left: -12, bottom: 0 }} barGap={8}>
@@ -138,7 +140,7 @@ export default function App() {
             <Info
               title="What this means"
               color={SKY}
-              body={`With no defense, ${defenseData[0].none} of ${total} crafted issues got the agent to read a private secret with a deliberately vulnerable prompt, and ${defenseData[1].none} of ${total} with a careful one. Repo binding dropped both to ${bindingReads}, and the locked agent still labelled ${pct(evalOff.correct, evalOff.total)}% of real issues correctly.`}
+              body={`With no defense, ${defenseData[0].none} of ${total} crafted issues got the agent to read a private secret with a deliberately vulnerable prompt, and ${defenseData[1].none} of ${total} with a careful one. Repo binding dropped both to ${bindingReads}. On real issues the agent scored ${pct(evalOff.correct, evalOff.total)}% with the lock on and ${pct(evalNoLock.correct, evalNoLock.total)}% with it off, vs 33% for always answering "bug".`}
             />
             <Info
               title="Why it matters"
@@ -149,8 +151,8 @@ export default function App() {
 
           <Card
             className="lg:col-span-2"
-            title={`Triage accuracy by label (${evalOff.model}, lock on)`}
-            note={`${evalOff.total} issues from ${evalOff.source}. Taint off ${pct(evalOff.correct, evalOff.total)}%, taint on ${pct(evalOn.correct, evalOn.total)}%, vs 33% for always answering "bug".`}
+            title={`Triage accuracy by label (${evalOff.model})`}
+            note={`${evalOff.total} issues from ${evalOff.source}, 1 run each. Lock off ${pct(evalNoLock.correct, evalNoLock.total)}%, lock on ${pct(evalOff.correct, evalOff.total)}%, lock + taint ${pct(evalOn.correct, evalOn.total)}%, vs 33% for always answering "bug".`}
           >
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={labelData} margin={{ top: 20, right: 8, left: -12, bottom: 0 }} barGap={8}>
@@ -159,10 +161,13 @@ export default function App() {
                 <YAxis domain={[0, 100]} unit="%" tick={AXIS} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={TIP} itemStyle={{ color: "#fff" }} labelStyle={{ color: "#ffffffaa" }} cursor={{ fill: `${BRAND}0d` }} formatter={(v, n) => [`${v}%`, n]} />
                 <Legend iconType="circle" formatter={legend} />
-                <Bar dataKey="off" name="taint off" fill={SKY} radius={[8, 8, 0, 0]} maxBarSize={56}>
+                <Bar dataKey="nolock" name="lock off" fill={CORAL} radius={[8, 8, 0, 0]} maxBarSize={56}>
+                  <LabelList dataKey="nolock" position="top" fill={INK} fontWeight={700} formatter={(v) => `${v}%`} />
+                </Bar>
+                <Bar dataKey="off" name="lock on" fill={SKY} radius={[8, 8, 0, 0]} maxBarSize={56}>
                   <LabelList dataKey="off" position="top" fill={INK} fontWeight={700} formatter={(v) => `${v}%`} />
                 </Bar>
-                <Bar dataKey="on" name="taint on" fill={SUN} radius={[8, 8, 0, 0]} maxBarSize={56}>
+                <Bar dataKey="on" name="lock + taint" fill={SUN} radius={[8, 8, 0, 0]} maxBarSize={56}>
                   <LabelList dataKey="on" position="top" fill={INK} fontWeight={700} formatter={(v) => `${v}%`} />
                 </Bar>
               </BarChart>
