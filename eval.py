@@ -1,14 +1,15 @@
 import asyncio
 import json
 import os
+import re
 import sys
+from datetime import date
 from pathlib import Path
 
 import httpx2
 from dotenv import load_dotenv
-from pydantic import BaseModel
 
-from agent import make_llm
+from agent import triage
 
 load_dotenv()
 
@@ -16,10 +17,6 @@ REPO = "encode/httpx"
 LABELS = ["bug", "enhancement", "question"]
 DATA = Path(__file__).with_name("eval_data.json")
 PER_LABEL = 18
-
-
-class Label(BaseModel):
-    label: str
 
 
 def _headers():
@@ -46,41 +43,41 @@ def fetch():
     print(f"froze {len(balanced)} issues to {DATA.name}:", {l: sum(r['gold'] == l for r in balanced) for l in LABELS})
 
 
-PROMPT = (
-    "You label GitHub issues. Reply with exactly one of: bug, enhancement, question.\n"
-    "bug = something is broken. enhancement = a new feature or improvement. question = asking for help or clarification."
-)
+async def predict(r, model: str, taint: bool) -> dict:
+    row = {"number": r["number"], "gold": r["gold"]}
+    try:
+        run = await triage(os.environ["SANDBOX_REPO"], r["number"], model, inject=(r["title"], r["body"]),
+                           taint=taint, prompt="realistic", labels=LABELS)
+    except Exception as e:
+        return row | {"pred": "error", "error": str(e)[:120]}
+    picked = [label.lower() for label in run.triage.labels] if run.triage else []
+    return row | {
+        "pred": next((label for label in picked if label in LABELS), "none" if run.triage else "no-output"),
+        "looped": run.looped,
+        "post_failed": any(c.tool == "post_comment" and c.blocked for c in run.tool_calls),
+    }
 
 
-async def score(model: str):
-    rows = json.loads(DATA.read_text(encoding="utf-8"))
-    llm = make_llm(model).with_structured_output(Label)
-    correct, confusion = 0, {}
-    for r in rows:
-        try:
-            pred = (await llm.ainvoke([("system", PROMPT), ("user", f"Title: {r['title']}\n\n{r['body']}")])).label.lower()
-        except Exception as e:
-            pred = f"error:{str(e)[:30]}"
-        hit = pred == r["gold"]
-        correct += hit
-        confusion[(r["gold"], pred)] = confusion.get((r["gold"], pred), 0) + 1
-    print(f"model={model}  accuracy={correct}/{len(rows)} = {correct / len(rows):.0%}")
-    per_label = {}
-    for lab in LABELS:
-        tot = sum(r["gold"] == lab for r in rows)
-        right = confusion.get((lab, lab), 0)
-        per_label[lab] = [right, tot]
-        print(f"  {lab}: {right}/{tot}")
-    out = Path(__file__).parent / "results" / "eval.json"
-    out.parent.mkdir(exist_ok=True)
-    out.write_text(json.dumps({
-        "model": model, "repo": REPO, "total": len(rows), "correct": correct,
-        "accuracy": round(correct / len(rows), 2), "per_label": per_label,
-    }, indent=1), encoding="utf-8")
+async def score(model: str, taint: bool):
+    out = Path(__file__).parent / "results" / f"eval-{re.sub(r'[^\w.-]', '_', model)}{'-taint' if taint else ''}.json"
+    done = []
+    for r in json.loads(DATA.read_text(encoding="utf-8")):
+        done.append(await predict(r, model, taint))
+        print(json.dumps(done[-1]), flush=True)
+        out.write_text(json.dumps({
+            "model": model, "source": REPO, "agent": "realistic prompt, repo binding on", "taint": taint,
+            "date": date.today().isoformat(), "total": len(done),
+            "correct": sum(d["pred"] == d["gold"] for d in done),
+            "per_label": {lab: [sum(d["pred"] == d["gold"] == lab for d in done), sum(d["gold"] == lab for d in done)]
+                          for lab in LABELS},
+            "no_output": sum(d["pred"] in ("no-output", "error") for d in done),
+            "post_failed": sum(d.get("post_failed", False) for d in done),
+            "rows": done,
+        }, indent=1), encoding="utf-8")
 
 
 if __name__ == "__main__":
     if sys.argv[1] == "fetch":
         fetch()
     else:
-        asyncio.run(score(sys.argv[1] if len(sys.argv) > 1 else "llama3.2"))
+        asyncio.run(score(sys.argv[1], "taint" in sys.argv[2:]))

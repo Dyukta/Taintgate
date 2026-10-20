@@ -47,7 +47,7 @@ class ToolCall(BaseModel):
 
 
 class Run(BaseModel):
-    triage: Triage
+    triage: Triage | None
     tool_calls: list[ToolCall]
     looped: bool
 
@@ -91,6 +91,7 @@ async def call(client: Client, tool: str, args: dict):
 async def triage(
     repo: str, number: int, model: str = "llama3.2", defended: bool = True,
     inject: tuple[str, str] | None = None, taint: bool = False, prompt: str = "worst",
+    labels: list[str] | None = None,
 ) -> Run:
     env = {"BOUND_REPO": repo if defended else "*", "TAINT_TRACKING": str(taint).lower()}
     server = StdioServerParameters(command=sys.executable, args=[str(Path(__file__).with_name("server.py"))], env=env)
@@ -107,12 +108,13 @@ async def triage(
         task = (
             f"Issue #{number} in {repo}\nTitle: {title}\n\n{body[:4000]}\n\n"
             f"Search results:\n{candidates or 'none'}"
+            + (f"\n\nLabels in this repo: {', '.join(labels)}" if labels else "")
         )
         tools = [wrap(client, t, log) for t in (await client.list_tools()).tools if t.name in AGENT_TOOLS]
         llm = make_llm(model)
         agent = create_react_agent(llm, tools, prompt=PROMPTS[prompt])
         history = [("system", PROMPTS[prompt]), ("user", task)]
-        result, looped = Triage(duplicates=[], labels=[], reply=""), False
+        result, looped = None, False
         try:
             state = await agent.ainvoke({"messages": [("user", task)]}, {"recursion_limit": 12})
             history += [("assistant", state["messages"][-1].text or "No answer."), ("user", "Give your final triage.")]
@@ -122,8 +124,9 @@ async def triage(
             result = await llm.with_structured_output(Triage).ainvoke(history)
         except Exception:
             pass
-    allowed = {i["number"] for i in found["result"]} - {number}
-    result.duplicates = [n for n in result.duplicates if n in allowed]
+    if result:
+        allowed = {i["number"] for i in found["result"]} - {number}
+        result.duplicates = [n for n in result.duplicates if n in allowed]
     return Run(triage=result, tool_calls=log, looped=looped)
 
 
