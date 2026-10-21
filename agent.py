@@ -1,11 +1,10 @@
 import asyncio
+import os
 import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_core.tools import StructuredTool
-import os
-
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
@@ -50,6 +49,7 @@ class Run(BaseModel):
     triage: Triage | None
     tool_calls: list[ToolCall]
     looped: bool
+    error: str | None = None
 
 
 def make_llm(model: str):
@@ -115,7 +115,7 @@ async def triage(
         llm = make_llm(model)
         agent = create_react_agent(llm, tools, prompt=PROMPTS[prompt])
         history = [("system", PROMPTS[prompt]), ("user", task)]
-        result, looped = None, False
+        result, looped, error = None, False, None
         try:
             state = await agent.ainvoke({"messages": [("user", task)]}, {"recursion_limit": 12})
             history += [("assistant", state["messages"][-1].text or "No answer."), ("user", "Give your final triage.")]
@@ -123,12 +123,12 @@ async def triage(
             looped = True
         try:
             result = await llm.with_structured_output(Triage).ainvoke(history)
-        except Exception:
-            pass
+        except Exception as e:
+            error = f"{type(e).__name__}: {e}"[:300]
     if result:
         allowed = {i["number"] for i in found["result"]} - {number}
         result.duplicates = [n for n in result.duplicates if n in allowed]
-    return Run(triage=result, tool_calls=log, looped=looped)
+    return Run(triage=result, tool_calls=log, looped=looped, error=error)
 
 
 if __name__ == "__main__":

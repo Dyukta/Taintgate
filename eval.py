@@ -55,6 +55,7 @@ async def predict(r, model: str, taint: bool, defended: bool) -> dict:
     return row | {
         "pred": next((label for label in picked if label in LABELS), "none" if run.triage else "no-output"),
         "looped": run.looped,
+        "triage_error": run.error,
         "post_failed": post_error is not None,
         "post_error": post_error,
     }
