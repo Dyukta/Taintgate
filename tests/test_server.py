@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 from mcp import Client
 
@@ -183,17 +185,32 @@ async def test_post_comment_rejects_empty_body(sandbox):
     assert result.is_error
 
 
-async def test_taint_blocks_post_after_get_file(sandbox, monkeypatch):
+@pytest.fixture
+def fake_github(monkeypatch):
+    import server
+
+    async def fake(path, method="GET", json=None, **params):
+        if "/contents/" in path:
+            return {"encoding": "base64", "content": base64.b64encode(b"TG-CANARY").decode()}
+        return {"private": path.endswith("-private")}
+
+    monkeypatch.setattr(server, "_github", fake)
+
+
+@pytest.mark.parametrize("repo, tainted", [(REPO, False), ("me/Secret-private", True)])
+async def test_taint_only_after_private_read(sandbox, fake_github, monkeypatch, repo, tainted):
     monkeypatch.setenv("TAINT_TRACKING", "true")
     monkeypatch.setenv("BOUND_REPO", "*")
     monkeypatch.setenv("UNSAFE_BASELINE", "1")
     async with Client(server) as client:
         before = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "hi"})
-        await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
+        read = await client.call_tool("get_file", {"repo": repo, "path": "secrets.txt"})
         after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "leak"})
     assert not before.is_error, before.content
-    assert after.is_error
-    assert "taint" in after.content[0].text
+    assert not read.is_error, read.content
+    assert after.is_error is tainted
+    if tainted:
+        assert "taint" in after.content[0].text
 
 
 async def test_taint_off_by_default(sandbox, monkeypatch):

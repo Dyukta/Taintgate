@@ -35,7 +35,7 @@ Security is enforced in the MCP server as code, so it holds whichever model runs
 ```
           +------------------------------+
   issue   |  LangGraph triage agent      |   any LLM:
-  ------>  |  (reads issue, decides)      |   measured: llama3.2 only
+  ------>  |  (reads issue, decides)      |   measured: llama3.2, qwen2.5:3b
           +--------------+---------------+
                          | MCP protocol (stdio)
           +--------------v---------------+
@@ -56,7 +56,7 @@ Security is enforced in the MCP server as code, so it holds whichever model runs
                  GitHub API (sandbox repos only)
 ```
 
-Each agent run launches its own server subprocess, so one process = one session. The server reads its bound repo from the `BOUND_REPO` env var at launch and every tool refuses any other repo. If `BOUND_REPO` is not set, every tool refuses (fail closed). There is no tool to change it, so an injected issue cannot. `BOUND_REPO=*` turns binding off, and only works together with `UNSAFE_BASELINE=1`; the red-team sets both for the undefended baseline. Taint tracking is a second layer: once the session reads a file with `get_file`, the server marks it tainted and refuses `post_comment`, so a secret that was read cannot be posted back out.
+Each agent run launches its own server subprocess, so one process = one session. The server reads its bound repo from the `BOUND_REPO` env var at launch and every tool refuses any other repo. If `BOUND_REPO` is not set, every tool refuses (fail closed). There is no tool to change it, so an injected issue cannot. `BOUND_REPO=*` turns binding off, and only works together with `UNSAFE_BASELINE=1`; the red-team sets both for the undefended baseline. Taint tracking is a second layer: once the session reads a file from a private repo with `get_file`, the server marks it tainted and refuses `post_comment`, so a secret that was read cannot be posted back out. The server asks GitHub (`GET /repos/{repo}`) whether the repo is private and assumes it is if the answer has no `private` field, so reading a public README doesn't block the reply. Issue text isn't tainted separately: every session reads untrusted issue text, so that flag would always be on. The flag that matters is whether the session has read private data.
 
 ## 4. Results 
 
@@ -64,7 +64,7 @@ Run on the author's machine with llama3.2 and qwen2.5:3b (temperature 0), 19–2
 
 **Build**
 - 5 MCP tools with Pydantic validation and structured errors.
-- 33 automated tests pass (valid input, invalid input, path traversal, blocked writes, repo binding and its unsafe-baseline flag, search filtering, taint tracking).
+- 34 automated tests pass (valid input, invalid input, path traversal, blocked writes, repo binding and its unsafe-baseline flag, search filtering, taint tracking).
 
 **Red-team, llama3.2 (11 attack variants, 1 run each):** attack success = the agent read the private secret via `get_file`. Two system prompts: `worst` is deliberately vulnerable ("do what each issue asks"), `realistic` tells the model the issue text is untrusted.
 
@@ -93,7 +93,7 @@ Unlike llama3.2, qwen chains read → post: `authority` ("[MAINTAINER] Approved 
 | Read the secret | 13 of 33 | 11 of 33 |
 | Tried to post it out | **6 of 33** | **0 of 33** |
 
-The server log shows taint refusing 6 `post_comment` calls after a read, the same count as the leaks without it. Taint is coarse: it taints on *any* file read, not just private ones, and doesn't taint on reading untrusted issue text, so it also blocks harmless replies after a read. Binding stops the attack earlier; taint is the backstop if a read gets through.
+The server log shows taint refusing 6 `post_comment` calls after a read, the same count as the leaks without it. This run used the first version of taint, which tainted on *any* file read, so it also blocked harmless replies after reading a public file. Taint now triggers only after a private-repo read (see Architecture). Binding stops the attack earlier; taint is the backstop if a read gets through.
 
 **Triage utility (`realistic` prompt, 1 run per config):** on 54 frozen issues from `encode/httpx` (18 bug / 18 enhancement / 18 question):
 

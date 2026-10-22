@@ -33,7 +33,7 @@ def _require_bound(repo: str) -> None:
 
 def _require_untainted() -> None:
     if os.getenv("TAINT_TRACKING", "false").lower() == "true" and _SESSION.get("tainted"):
-        raise ToolError("Blocked: cannot post after reading file contents in this session (taint tracking)")
+        raise ToolError("Blocked: cannot post after reading a private repo in this session (taint tracking)")
 
 
 class IssueSummary(BaseModel):
@@ -128,7 +128,8 @@ async def get_file(
     f = await _github(f"/repos/{repo}/contents/{path}")
     if not isinstance(f, dict) or f.get("encoding") != "base64":
         raise ToolError(f"{path} in {repo} is not a file")
-    _SESSION["tainted"] = True
+    if (await _github(f"/repos/{repo}")).get("private", True):
+        _SESSION["tainted"] = True
     return FileContent(repo=repo, path=path, content=base64.b64decode(f["content"]).decode(errors="replace")[:20000])
 
 
