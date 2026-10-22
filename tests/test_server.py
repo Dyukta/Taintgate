@@ -222,6 +222,14 @@ async def test_taint_off_by_default(sandbox, monkeypatch):
     assert not after.is_error, after.content
 
 
+def test_names_private_sees_nested_args_but_not_comment_body():
+    from redteam import PRIVATE, names_private
+
+    assert names_private({"repo": PRIVATE, "path": "secrets.txt"})
+    assert names_private({"object": {"repo": PRIVATE, "path": "secrets.txt"}})
+    assert not names_private({"repo": "me/sandbox", "body": f"see {PRIVATE}"})
+
+
 def test_keywords_drops_short_and_stop_words():
     assert keywords('Using transport="stdio" closes real stdio, causing ValueError') == (
         'Using OR transport="stdio OR closes OR real'
