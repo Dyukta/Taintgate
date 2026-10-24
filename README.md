@@ -60,7 +60,7 @@ Each agent run launches its own server subprocess, so one process = one session.
 
 ## 4. Results 
 
-Run on the author's machine with llama3.2 and qwen2.5:3b (temperature 0). Red-team runs and the taint eval: 24 Oct 2026; the lock-off and lock-on evals: 20 Oct 2026. The dashboard shows llama3.2 only. Raw data: `results/redteam-llama3.2.json`, `results/redteam-qwen2.5_3b.json`, `results/redteam-qwen2.5_3b-taint.json`, `results/eval-llama3.2.json`, `results/eval-llama3.2-taint.json`, `results/eval-llama3.2-nolock.json`.
+Run on the author's machine with llama3.2 and qwen2.5:3b (temperature 0). Red-team runs and the taint eval: 24 Oct 2026; the lock-off and lock-on evals: 20 Oct 2026. The dashboard shows both models' red-team results and the llama3.2 triage evals. Raw data: `results/redteam-llama3.2.json`, `results/redteam-qwen2.5_3b.json`, `results/redteam-qwen2.5_3b-taint.json`, `results/eval-llama3.2.json`, `results/eval-llama3.2-taint.json`, `results/eval-llama3.2-nolock.json`.
 
 **Build**
 - 5 MCP tools with Pydantic validation and structured errors.
@@ -205,5 +205,5 @@ npm install
 npm run dev
 ```
 
-It reads the llama3.2 result JSON straight from `results/`, so a rerun shows up on reload.
+It reads the result JSON straight from `results/`, so a rerun shows up on reload.
 

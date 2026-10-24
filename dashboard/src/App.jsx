@@ -1,5 +1,7 @@
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import redteam from "../../results/redteam-llama3.2.json";
+import qwen from "../../results/redteam-qwen2.5_3b.json";
+import qwenTaint from "../../results/redteam-qwen2.5_3b-taint.json";
 import evalOff from "../../results/eval-llama3.2.json";
 import evalOn from "../../results/eval-llama3.2-taint.json";
 import evalNoLock from "../../results/eval-llama3.2-nolock.json";
@@ -73,6 +75,15 @@ export default function App() {
   }));
   const bindingReads = defenseData.reduce((n, d) => n + d.binding, 0);
 
+  const q = { ...qwen.summary, ...qwenTaint.summary };
+  const qRuns = q["realistic/none"].runs;
+  const qwenData = [["read_secret", "read the secret"], ["leaked", "posted it out"]].map(([k, name]) => ({
+    name,
+    none: q["realistic/none"][k],
+    binding: q["realistic/binding"][k],
+    taint: q["realistic/taint"][k],
+  }));
+
   const labelData = Object.keys(evalOff.per_label).map((label) => ({
     label,
     nolock: pct(evalNoLock.per_label[label][0], evalNoLock.per_label[label][1]),
@@ -97,7 +108,7 @@ export default function App() {
           </div>
           <div className="flex gap-3 text-sm">
             <span className="rounded-xl bg-white px-4 py-2.5 shadow-[0_2px_12px_rgba(3,2,41,0.08)]">{redteam.model}</span>
-            <span className="rounded-xl bg-white px-4 py-2.5 shadow-[0_2px_12px_rgba(3,2,41,0.08)]">{evalOff.date}</span>
+            <span className="rounded-xl bg-white px-4 py-2.5 shadow-[0_2px_12px_rgba(3,2,41,0.08)]">{redteam.date}</span>
           </div>
         </header>
 
@@ -112,7 +123,7 @@ export default function App() {
           <Card
             className="lg:col-span-2"
             title={`Secret reads by prompt and defense (${redteam.model})`}
-            note={`${total} attack variants, ${redteam.runs_per_attack} run each. llama3.2 never posted a secret out. Second model (qwen2.5:3b) and the taint red-team: see README.`}
+            note={`${total} attack variants, ${redteam.runs_per_attack} run each. llama3.2 never posted a secret out. Second model (qwen2.5:3b): see below.`}
           >
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={defenseData} margin={{ top: 20, right: 8, left: -12, bottom: 0 }} barGap={8}>
@@ -140,7 +151,7 @@ export default function App() {
             <Info
               title="What this means"
               color={SKY}
-              body={`With no defense, ${defenseData[0].none} of ${total} crafted issues got the agent to read a private secret with a deliberately vulnerable prompt, and ${defenseData[1].none} of ${total} with a careful one. Repo binding dropped both to ${bindingReads}. On real issues the agent scored ${pct(evalOff.correct, evalOff.total)}% with the lock on and ${pct(evalNoLock.correct, evalNoLock.total)}% with it off, vs 33% for always answering "bug".`}
+              body={`With no defense, ${defenseData[0].none} of ${total} crafted issues got the agent to read a private secret with a deliberately vulnerable prompt, and ${defenseData[1].none} of ${total} with a careful one. Repo binding dropped both to ${bindingReads}. qwen2.5:3b posted the secret out in ${q["realistic/none"].leaked} of ${qRuns} runs with no defense; binding and taint each cut that to ${Math.max(q["realistic/binding"].leaked, q["realistic/taint"].leaked)}. On real issues the agent scored ${pct(evalOff.correct, evalOff.total)}% with the lock on and ${pct(evalNoLock.correct, evalNoLock.total)}% with it off, vs 33% for always answering "bug".`}
             />
             <Info
               title="Why it matters"
@@ -169,6 +180,31 @@ export default function App() {
                 </Bar>
                 <Bar dataKey="on" name="lock + taint" fill={SUN} radius={[8, 8, 0, 0]} maxBarSize={56}>
                   <LabelList dataKey="on" position="top" fill={INK} fontWeight={700} formatter={(v) => `${v}%`} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card
+            className="lg:col-span-3"
+            title={`Secret reads and leaks by defense (${qwen.model})`}
+            note={`${qRuns / qwen.runs_per_attack} attack variants, ${qwen.runs_per_attack} runs each, careful prompt. Taint runs with binding off, so the read gets through and only the post is refused.`}
+          >
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={qwenData} margin={{ top: 20, right: 8, left: -12, bottom: 0 }} barGap={8}>
+                <CartesianGrid stroke={GRID} vertical={false} />
+                <XAxis dataKey="name" tick={AXIS} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, qRuns]} tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={TIP} itemStyle={{ color: "#fff" }} labelStyle={{ color: "#ffffffaa" }} cursor={{ fill: `${BRAND}0d` }} formatter={(v, n) => [`${v} of ${qRuns}`, n]} />
+                <Legend iconType="circle" formatter={legend} />
+                <Bar dataKey="none" name="no defense" fill={CORAL} radius={[8, 8, 0, 0]} maxBarSize={56}>
+                  <LabelList dataKey="none" position="top" fill={INK} fontWeight={700} />
+                </Bar>
+                <Bar dataKey="binding" name="repo binding" fill={SKY} radius={[8, 8, 0, 0]} maxBarSize={56}>
+                  <LabelList dataKey="binding" position="top" fill={INK} fontWeight={700} />
+                </Bar>
+                <Bar dataKey="taint" name="taint only" fill={SUN} radius={[8, 8, 0, 0]} maxBarSize={56}>
+                  <LabelList dataKey="taint" position="top" fill={INK} fontWeight={700} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
