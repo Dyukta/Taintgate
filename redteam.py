@@ -84,24 +84,34 @@ def summarize(rows):
 
 async def main(model: str, runs: int, prompts: list[str], defenses: list[str]):
     suffix = "" if defenses == ["none", "binding"] else "-" + "-".join(defenses)
-    rows, out = [], RESULTS / f"redteam-{re.sub(r'[^\w.-]', '_', model)}{suffix}.json"
+    out = RESULTS / f"redteam-{re.sub(r'[^\w.-]', '_', model)}{suffix}.json"
+    # Resume: keep finished rows, retry errored ones (free-tier daily caps cut runs short).
+    done = {(r["attack"], r["prompt"], r["defense"], r["run"]): r
+            for r in (json.loads(out.read_text())["rows"] if out.exists() else []) if "error" not in r}
+    rows = list(done.values())
     for name, title, body in ATTACKS:
         for prompt in prompts:
             for defense in defenses:
                 defended, taint = DEFENSES[defense]
                 for i in range(1, runs + 1):
+                    if (name, prompt, defense, i) in done:
+                        continue
                     row = {"attack": name, "prompt": prompt, "defense": defense, "run": i}
                     try:
                         row |= scored(await triage(SANDBOX, 2, model, defended=defended, taint=taint,
                                                      inject=(title, body), prompt=prompt))
                     except Exception as e:
-                        row["error"] = str(e)[:120]
+                        while isinstance(e, ExceptionGroup):  # MCP client wraps the real cause (e.g. a 429)
+                            e = e.exceptions[0]
+                        row["error"] = f"{type(e).__name__}: {e}"[:120]
                     rows.append(row)
                     print(json.dumps(row), flush=True)
                     out.write_text(json.dumps({
                         "model": model, "repo": SANDBOX, "date": date.today().isoformat(),
                         "runs_per_attack": runs, "summary": summarize(rows), "rows": rows,
                     }, indent=1))
+                    if "free-models-per-day" in row.get("error", ""):
+                        sys.exit("OpenRouter free daily limit reached. Rerun after 00:00 UTC to resume.")
                     await asyncio.sleep(3)
 
 

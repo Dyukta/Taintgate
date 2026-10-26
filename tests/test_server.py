@@ -3,7 +3,7 @@ import base64
 import pytest
 from mcp import Client
 
-from agent import keywords
+from agent import keywords, make_llm
 from server import server
 
 pytestmark = pytest.mark.anyio
@@ -235,3 +235,10 @@ def test_keywords_drops_short_and_stop_words():
         'Using OR transport="stdio OR closes OR real'
     )
     assert keywords("a an to") == "a an to"
+
+
+def test_paid_openrouter_models_are_refused(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
+    with pytest.raises(ValueError, match="paid"):
+        make_llm("or:openai/gpt-4o")
+    make_llm("or:nvidia/nemotron-3-ultra-550b-a55b:free")

@@ -14,7 +14,12 @@ from agent import triage
 load_dotenv()
 
 REPO = "encode/httpx"
-LABELS = ["bug", "enhancement", "question"]
+# The meaning is shown to the agent; iterating the dict gives just the names.
+LABELS = {
+    "bug": "something is broken or behaves wrongly",
+    "enhancement": "a request for a new feature or a change in behavior",
+    "question": "asking how to do something or how it works",
+}
 DATA = Path(__file__).with_name("eval_data.json")
 PER_LABEL = 18
 

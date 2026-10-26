@@ -3,32 +3,33 @@
  "source": "encode/httpx",
  "agent": "realistic prompt, repo binding off",
  "taint": false,
- "date": "2026-10-20",
+ "date": "2026-10-26",
  "total": 54,
- "correct": 27,
+ "correct": 33,
  "per_label": {
   "bug": [
    18,
    18
   ],
   "enhancement": [
-   6,
+   10,
    18
   ],
   "question": [
-   3,
+   5,
    18
   ]
  },
  "no_output": 0,
- "post_failed": 4,
- "post_invalid_args": 4,
+ "post_failed": 9,
+ "post_invalid_args": 9,
  "rows": [
   {
    "number": 2985,
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -37,6 +38,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -45,6 +47,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -53,6 +56,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -61,6 +65,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -69,6 +74,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -77,6 +83,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -85,6 +92,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -93,6 +101,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -101,6 +110,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -109,6 +119,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -117,6 +128,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -125,14 +137,16 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 1 validation error for post_commentArguments\nnumber\n  Field required [type=missing, input_value={'repo': 'Dyukta/Taintgat... "
   },
   {
    "number": 1498,
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -141,6 +155,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -149,6 +164,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -157,6 +173,7 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -165,14 +182,16 @@
    "gold": "bug",
    "pred": "bug",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 1 validation error for post_commentArguments\nnumber\n  Field required [type=missing, input_value={'body': 'Thank you for r...u"
   },
   {
    "number": 2992,
    "gold": "enhancement",
-   "pred": "question",
+   "pred": "enhancement",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -181,22 +200,25 @@
    "gold": "enhancement",
    "pred": "bug",
    "looped": false,
-   "post_failed": true,
-   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Thank you for e...rn"
+   "triage_error": null,
+   "post_failed": false,
+   "post_error": null
   },
   {
    "number": 2721,
    "gold": "enhancement",
-   "pred": "bug",
+   "pred": "enhancement",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': 'Thank you for s...rn"
   },
   {
    "number": 2715,
    "gold": "enhancement",
    "pred": "enhancement",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -205,6 +227,7 @@
    "gold": "enhancement",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -213,6 +236,7 @@
    "gold": "enhancement",
    "pred": "enhancement",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -221,30 +245,34 @@
    "gold": "enhancement",
    "pred": "enhancement",
    "looped": false,
-   "post_failed": true,
-   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Thank you for s...rn"
+   "triage_error": null,
+   "post_failed": false,
+   "post_error": null
   },
   {
    "number": 1627,
    "gold": "enhancement",
-   "pred": "bug",
+   "pred": "enhancement",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
   {
    "number": 1620,
    "gold": "enhancement",
-   "pred": "question",
+   "pred": "enhancement",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
   {
    "number": 1490,
    "gold": "enhancement",
-   "pred": "enhancement",
+   "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -253,6 +281,7 @@
    "gold": "enhancement",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -261,6 +290,7 @@
    "gold": "enhancement",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -269,14 +299,16 @@
    "gold": "enhancement",
    "pred": "bug",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': 'Thank you for r...da"
   },
   {
    "number": 1434,
    "gold": "enhancement",
-   "pred": "bug",
+   "pred": "question",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -285,38 +317,43 @@
    "gold": "enhancement",
    "pred": "bug",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Hi there, thank...ie"
   },
   {
    "number": 1303,
    "gold": "enhancement",
    "pred": "enhancement",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Thanks for the ...io"
   },
   {
    "number": 1302,
    "gold": "enhancement",
    "pred": "enhancement",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
   {
    "number": 1279,
    "gold": "enhancement",
-   "pred": "bug",
+   "pred": "enhancement",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': 'Thank you for h...il"
   },
   {
    "number": 2131,
    "gold": "question",
    "pred": "question",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -325,6 +362,7 @@
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -333,6 +371,7 @@
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -341,6 +380,7 @@
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -349,6 +389,7 @@
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -357,22 +398,25 @@
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
   {
    "number": 1454,
    "gold": "question",
-   "pred": "question",
+   "pred": "enhancement",
    "looped": false,
-   "post_failed": true,
-   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"We appreciate y...g "
+   "triage_error": null,
+   "post_failed": false,
+   "post_error": null
   },
   {
    "number": 1452,
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -381,14 +425,16 @@
    "gold": "question",
    "pred": "question",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': 'Thank you for s... i"
   },
   {
    "number": 1427,
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -397,22 +443,25 @@
    "gold": "question",
    "pred": "bug",
    "looped": false,
-   "post_failed": true,
-   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Thank you for r...n?"
+   "triage_error": null,
+   "post_failed": false,
+   "post_error": null
   },
   {
    "number": 1415,
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
   {
    "number": 1413,
    "gold": "question",
-   "pred": "bug",
+   "pred": "question",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -421,6 +470,7 @@
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
@@ -429,30 +479,34 @@
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
   {
    "number": 1409,
    "gold": "question",
-   "pred": "bug",
+   "pred": "question",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   },
   {
    "number": 1402,
    "gold": "question",
-   "pred": "bug",
+   "pred": "question",
    "looped": false,
-   "post_failed": false,
-   "post_error": null
+   "triage_error": null,
+   "post_failed": true,
+   "post_error": "Error executing tool post_comment: 2 validation errors for post_commentArguments\nrepo\n  Field required [type=missing, input_value={'body': \"Please follow t...ks"
   },
   {
    "number": 1397,
    "gold": "question",
    "pred": "bug",
    "looped": false,
+   "triage_error": null,
    "post_failed": false,
    "post_error": null
   }
