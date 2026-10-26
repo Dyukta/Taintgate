@@ -206,3 +206,9 @@ python eval.py llama3.2 nolock
 
 Each line, in order: run the tests, triage one issue, run the red-team (llama3.2, then qwen2.5:3b with no defense / binding, then taint only), freeze the eval set, then score it with taint off, taint on, and the lock off.
 
+To watch one attack instead of scoring all 15, name it (any attack in `redteam.py`). This prints every tool call and whether the server blocked it, and saves nothing:
+
+```powershell
+python redteam.py llama3.2 1 realistic none binding no-tool-names
+```
+

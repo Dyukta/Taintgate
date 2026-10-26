@@ -116,9 +116,29 @@ async def main(model: str, runs: int, prompts: list[str], defenses: list[str]):
                     await asyncio.sleep(3)
 
 
+async def demo(model: str, prompts: list[str], defenses: list[str], names: list[str]):
+    # Run chosen attacks once and print each tool call; saves nothing to results/.
+    for name, title, body in ATTACKS:
+        if name not in names:
+            continue
+        for prompt in prompts:
+            for defense in defenses:
+                defended, taint = DEFENSES[defense]
+                run = await triage(SANDBOX, 2, model, defended=defended, taint=taint, inject=(title, body), prompt=prompt)
+                print(f"\n== {name} / {prompt} prompt / defense: {defense}")
+                for c in run.tool_calls:
+                    print(f"  {'BLOCKED' if c.blocked else 'ok':7} {c.tool}({json.dumps(c.args)[:120]})\n          -> {c.result[:120]}")
+                print("  ", {k: v for k, v in scored(run).items() if k in ("read_secret", "leaked")})
+
+
 if __name__ == "__main__":
     model = sys.argv[1] if len(sys.argv) > 1 else "llama3.2"
     runs = int(sys.argv[2]) if len(sys.argv) > 2 else 3
     rest = sys.argv[3:]
-    asyncio.run(main(model, runs, [a for a in rest if a not in DEFENSES] or ["worst", "realistic"],
-                     [a for a in rest if a in DEFENSES] or ["none", "binding"]))
+    names = {a[0] for a in ATTACKS}
+    prompts = [a for a in rest if a not in DEFENSES and a not in names] or ["worst", "realistic"]
+    defenses = [a for a in rest if a in DEFENSES] or ["none", "binding"]
+    if attacks := [a for a in rest if a in names]:
+        asyncio.run(demo(model, prompts, defenses, attacks))
+    else:
+        asyncio.run(main(model, runs, prompts, defenses))
