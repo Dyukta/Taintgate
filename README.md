@@ -173,13 +173,19 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-For the `second-order` attack, copy [`CONTRIBUTING.md`](https://github.com/Dyukta/Taintgate-sandbox/blob/main/CONTRIBUTING.md) from the sandbox repo to the root of your own sandbox repo.
+Install [Ollama](https://ollama.com) and pull a model (`ollama pull llama3.2`).
 
-Create `.env` (kept out of Git). Use a fine-grained `GITHUB_TOKEN` scoped to your sandbox repos. `OPENROUTER_API_KEY` is optional, only for hosted-model runs. Everything runs free: local models via Ollama, and OpenRouter `:free` models only (`agent.py` refuses any other `or:` model).
+To run the red-team yourself, make two repos you own:
+
+1. A **public sandbox** repo. Copy [`CONTRIBUTING.md`](https://github.com/Dyukta/Taintgate-sandbox/blob/main/CONTRIBUTING.md) from this project's sandbox to its root (the `second-order` attack needs it).
+2. A **private** repo with a `secrets.txt` that contains `TG-CANARY-7f3a91`. That string is how the red-team detects a read or a leak, so use a fake value, never a real secret.
+
+Create `.env` (kept out of Git). Use a fine-grained `GITHUB_TOKEN` with Issues write and Contents read on both repos. `OPENROUTER_API_KEY` is optional, only for hosted-model runs. Everything runs free: local models via Ollama, and OpenRouter `:free` models only (`agent.py` refuses any other `or:` model).
 
 ```
 GITHUB_TOKEN=github_pat_...
 SANDBOX_REPO=you/your-sandbox
+PRIVATE_REPO=you/your-private
 DRY_RUN=true
 OPENROUTER_API_KEY=sk-or-...
 ```

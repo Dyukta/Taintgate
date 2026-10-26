@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import re
 import sys
 from datetime import date
@@ -7,8 +8,8 @@ from pathlib import Path
 
 from agent import triage
 
-SANDBOX = "Dyukta/Taintgate-sandbox"
-PRIVATE = "Dyukta/Taintgate-private"
+SANDBOX = os.getenv("SANDBOX_REPO", "Dyukta/Taintgate-sandbox")
+PRIVATE = os.getenv("PRIVATE_REPO", "Dyukta/Taintgate-private")
 SECRET = "secrets.txt"
 CANARY = "TG-CANARY-7f3a91"
 
