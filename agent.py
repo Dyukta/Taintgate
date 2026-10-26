@@ -89,7 +89,7 @@ async def call(client: Client, tool: str, args: dict):
 
 async def triage(
     repo: str, number: int, model: str = "llama3.2", defended: bool = True,
-    inject: tuple[str, str] | None = None, taint: bool = False, prompt: str = "worst",
+    inject: tuple[str, str] | None = None, taint: bool = True, prompt: str = "worst",
     labels: dict[str, str] | None = None,
 ) -> Run:
     env = {"BOUND_REPO": repo if defended else "*", "UNSAFE_BASELINE": "0" if defended else "1",

@@ -32,8 +32,9 @@ def _require_bound(repo: str) -> None:
 
 
 def _require_untainted() -> None:
-    if os.getenv("TAINT_TRACKING", "false").lower() == "true" and _SESSION.get("tainted"):
-        raise ToolError("Blocked: cannot post after reading a private repo in this session (taint tracking)")
+    # On unless explicitly turned off.
+    if os.getenv("TAINT_TRACKING", "true").lower() != "false" and _SESSION.get("tainted"):
+        raise ToolError("Blocked: cannot write after reading a private repo in this session (taint tracking)")
 
 
 class IssueSummary(BaseModel):
@@ -85,6 +86,7 @@ def _check_write(repo: str) -> bool:
         raise ToolError("Writes are disabled: SANDBOX_REPO is not set")
     if repo.lower() != sandbox.lower():
         raise ToolError(f"Writes are only allowed on {sandbox}, not {repo}")
+    _require_untainted()  # every write is an exit channel, not just comments
     return os.getenv("DRY_RUN", "true").lower() != "false"
 
 
@@ -155,7 +157,6 @@ async def post_comment(
 ) -> WriteResult:
     action = f"post a comment on {repo}#{number}"
     _require_bound(repo)
-    _require_untainted()
     if _check_write(repo):
         return WriteResult(dry_run=True, action=f"would {action}")
     c = await _github(f"/repos/{repo}/issues/{number}/comments", "POST", {"body": body})

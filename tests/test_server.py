@@ -197,15 +197,20 @@ def fake_github(monkeypatch):
     monkeypatch.setattr(server, "_github", fake)
 
 
+WRITES = [("post_comment", {"body": "TG-CANARY"}), ("add_label", {"label": "TG-CANARY"})]
+
+
+@pytest.mark.parametrize("tool, args", WRITES)
 @pytest.mark.parametrize("repo, tainted", [(REPO, False), ("me/Secret-private", True)])
-async def test_taint_only_after_private_read(sandbox, fake_github, monkeypatch, repo, tainted):
-    monkeypatch.setenv("TAINT_TRACKING", "true")
+async def test_taint_blocks_every_write_after_private_read(sandbox, fake_github, monkeypatch, repo, tainted, tool, args):
+    monkeypatch.delenv("TAINT_TRACKING", raising=False)  # on by default
     monkeypatch.setenv("BOUND_REPO", "*")
     monkeypatch.setenv("UNSAFE_BASELINE", "1")
+    write = {"repo": "me/sandbox", "number": 1, **args}
     async with Client(server) as client:
-        before = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "hi"})
+        before = await client.call_tool(tool, write)
         read = await client.call_tool("get_file", {"repo": repo, "path": "secrets.txt"})
-        after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "leak"})
+        after = await client.call_tool(tool, write)
     assert not before.is_error, before.content
     assert not read.is_error, read.content
     assert after.is_error is tainted
@@ -213,11 +218,12 @@ async def test_taint_only_after_private_read(sandbox, fake_github, monkeypatch, 
         assert "taint" in after.content[0].text
 
 
-async def test_taint_off_by_default(sandbox, monkeypatch):
+async def test_taint_can_be_turned_off(sandbox, fake_github, monkeypatch):
+    monkeypatch.setenv("TAINT_TRACKING", "false")
     monkeypatch.setenv("BOUND_REPO", "*")
     monkeypatch.setenv("UNSAFE_BASELINE", "1")
     async with Client(server) as client:
-        await client.call_tool("get_file", {"repo": REPO, "path": "README.md"})
+        await client.call_tool("get_file", {"repo": "me/Secret-private", "path": "secrets.txt"})
         after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "ok"})
     assert not after.is_error, after.content
 
