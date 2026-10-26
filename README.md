@@ -138,7 +138,7 @@ Always answering `bug` would score 33%. The old prompt only listed the label nam
 - **Repo binding via server config.** The bound repo comes from `BOUND_REPO`, set by whoever launches the server, not by any tool call. Taint state is still module-level, which is per-session only because each agent run spawns its own stdio subprocess; it would leak across sessions over HTTP transport.
 - **Writes dry-run and sandbox-only by default.** Safe by default; a real write needs an explicit `DRY_RUN=false` and the correct sandbox repo.
 - **Fine-grained token, least privilege.** The token has only Issues write and Contents read. It *can* read the private repo on purpose: that's the asset being protected, and the attack only means something if the token could leak it. Binding, not the token, is what stops the read.
-- **Built to run more than one model.** A weak local model can "resist" an attack only because it is too weak to follow it, a false win. The agent supports Ollama, Gemini and OpenRouter models; llama3.2 and qwen2.5:3b have been scored.
+- **Built to run more than one model.** A weak local model can "resist" an attack only because it is too weak to follow it, a false win. The agent supports Ollama and OpenRouter models; llama3.2 and qwen2.5:3b have been scored.
 
 ## 6. Problems found and how they were fixed
 
@@ -161,7 +161,7 @@ A running log of what broke or misled along the way, and what was done about it.
 - **Exfiltration was only reached by qwen2.5:3b**, on 2 of 15 attacks (both subtle ones) in the 24 Oct run, and only in dry-run (the leak is a `post_comment` call, not a real post). llama3.2 never chained read → post.
 - **Tests hit live GitHub** with fixed issue numbers, so they can get flaky or rate-limited. CI (`.github/workflows/ci.yml`) runs them on every push.
 - **Duplicate detection is not evaluated.**
-- **Free hosted tiers are small** (Gemini 20/day, OpenRouter 50/day), so a hosted-model red-team takes several days of resumed runs. The project is kept free on purpose: no paid tiers.
+- **Free hosted tiers are small** (OpenRouter 50/day), so a hosted-model red-team takes several days of resumed runs. The project is kept free on purpose: no paid tiers.
 
 ## 8. Setup
 
@@ -175,13 +175,12 @@ python -m pip install -r requirements.txt
 
 For the `second-order` attack, copy [`CONTRIBUTING.md`](https://github.com/Dyukta/Taintgate-sandbox/blob/main/CONTRIBUTING.md) from the sandbox repo to the root of your own sandbox repo.
 
-Create `.env` (kept out of Git). Use a fine-grained `GITHUB_TOKEN` scoped to your sandbox repos. `GOOGLE_API_KEY` and `OPENROUTER_API_KEY` are optional, only for the second-model runs. Everything runs free: local models via Ollama, OpenRouter `:free` models only (`agent.py` refuses any other `or:` model), and a Google AI Studio key on a project without billing enabled.
+Create `.env` (kept out of Git). Use a fine-grained `GITHUB_TOKEN` scoped to your sandbox repos. `OPENROUTER_API_KEY` is optional, only for hosted-model runs. Everything runs free: local models via Ollama, and OpenRouter `:free` models only (`agent.py` refuses any other `or:` model).
 
 ```
 GITHUB_TOKEN=github_pat_...
 SANDBOX_REPO=you/your-sandbox
 DRY_RUN=true
-GOOGLE_API_KEY=...
 OPENROUTER_API_KEY=sk-or-...
 ```
 

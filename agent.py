@@ -5,7 +5,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_core.tools import StructuredTool
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
@@ -60,8 +59,6 @@ def make_llm(model: str):
             model=model[3:], temperature=0, timeout=120, max_tokens=1024,
             base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"],
         )
-    if model.startswith("gemini"):
-        return ChatGoogleGenerativeAI(model=model, temperature=0, max_output_tokens=1024, timeout=120)
     return ChatOllama(model=model, temperature=0, num_predict=400, client_kwargs={"timeout": 120})
 
 
