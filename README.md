@@ -1,3 +1,10 @@
+DENO:
+
+![Uploading image.png…]()
+
+
+
+
 # Taintgate
 
 A GitHub issue-triage agent whose MCP server blocks prompt injection **in code, not in the prompt**.
