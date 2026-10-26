@@ -37,9 +37,8 @@ python redteam.py llama3.2 1 worst none binding no-tool-names
 5. [Design decisions](#5-design-decisions)
 6. [Problems found and fixed](#6-problems-found-and-fixed)
 7. [Limitations](#7-limitations)
-8. [Setup](#8-setup)
-9. [Run](#9-run)
-10. [Files](#10-files)
+8. [Future scope](#8-future-scope)
+9. [Setup](#9-setup)
 
 ---
 
@@ -177,7 +176,15 @@ All four are from the no-defense runs. Binding stopped every one of them.
 - **Duplicate detection isn't evaluated.** Triage quality is measured on llama3.2 only.
 - **Taint state is module-level.** That's per-session only because each run gets its own stdio process; over HTTP transport it would leak across sessions.
 
-## 8. Setup
+## 8. Future scope
+
+1. **Finish the large-model run.** Complete the nemotron-3-ultra 550B binding and taint runs on the free tier. Its no-defense run is the only one where a model followed a planted file (`second-order`).
+2. **Per-session taint state.** Key taint by MCP session instead of a module-level dict, so the server is safe over HTTP transport with many clients.
+3. **Taint through the agent's own reply.** Today taint blocks `post_comment` only. Also checking the final triage reply for private content would cover an agent that leaks through its answer instead of a tool call.
+4. **More runs and attacks.** 3+ runs per attack on every model, and attacks delivered through comments and linked issues, so per-attack counts stop being one sample.
+5. **Evaluate duplicate detection** against issues that maintainers closed as duplicates.
+
+## 9. Setup
 
 Windows + PowerShell, Python 3.14, [Ollama](https://ollama.com).
 
