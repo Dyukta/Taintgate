@@ -26,23 +26,6 @@ Run it yourself (prints each tool call, saves nothing to `results/`):
 python redteam.py llama3.2 1 worst none binding no-tool-names
 ```
 
----
-
-## Contents
-
-1. [Threat model](#1-threat-model)
-2. [How it works](#2-how-it-works)
-3. [Results](#3-results)
-4. [Attacks](#4-attacks)
-5. [Design decisions](#5-design-decisions)
-6. [Problems found and fixed](#6-problems-found-and-fixed)
-7. [Limitations](#7-limitations)
-8. [Setup](#8-setup)
-9. [Run](#9-run)
-10. [Files](#10-files)
-
----
-
 ## 1. Threat model
 
 | | |
