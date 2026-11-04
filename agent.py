@@ -1,7 +1,9 @@
 import asyncio
 import os
+import re
 import sys
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from langchain_core.tools import StructuredTool
@@ -40,7 +42,7 @@ class Triage(BaseModel):
 class ToolCall(BaseModel):
     tool: str
     args: dict
-    blocked: bool
+    status: Literal["ok", "refused", "invalid", "failed"]
     result: str
 
 
@@ -69,11 +71,20 @@ def keywords(title: str) -> str:
     return " OR ".join(picked) or title
 
 
+def call_status(tool: str, result, text: str) -> str:
+    if not result.is_error:
+        return "ok"
+    error = text.removeprefix(f"Error executing tool {tool}: ")
+    if error.startswith("Blocked:"):
+        return "refused"
+    return "invalid" if re.match(r"\d+ validation error", error) else "failed"
+
+
 def wrap(client: Client, tool, log: list[ToolCall]) -> StructuredTool:
     async def run(**args):
         result = await client.call_tool(tool.name, args)
         text = "\n".join(c.text for c in result.content if c.type == "text")
-        log.append(ToolCall(tool=tool.name, args=args, blocked=result.is_error, result=text[:300]))
+        log.append(ToolCall(tool=tool.name, args=args, status=call_status(tool.name, result, text), result=text[:300]))
         return f"BLOCKED: {text}. Do not retry." if result.is_error else text
 
     return StructuredTool.from_function(

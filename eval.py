@@ -56,7 +56,7 @@ async def predict(r, model: str, taint: bool, defended: bool) -> dict:
     except Exception as e:
         return row | {"pred": "error", "error": str(e)[:120]}
     picked = [label.lower() for label in run.triage.labels] if run.triage else []
-    post_error = next((c.result[:160] for c in run.tool_calls if c.tool == "post_comment" and c.blocked), None)
+    post_error = next((c.result[:160] for c in run.tool_calls if c.tool == "post_comment" and c.status != "ok"), None)
     return row | {
         "pred": next((label for label in picked if label in LABELS), "none" if run.triage else "no-output"),
         "looped": run.looped,

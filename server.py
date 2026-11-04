@@ -89,9 +89,9 @@ async def _github(path: str, method: str = "GET", json: Any = None, **params: An
 def _check_write(repo: str, number: int) -> bool:
     sandbox = os.getenv("SANDBOX_REPO", "")
     if not sandbox:
-        raise ToolError("Writes are disabled: SANDBOX_REPO is not set")
+        raise ToolError("Blocked: writes are disabled: SANDBOX_REPO is not set")
     if repo.lower() != sandbox.lower():
-        raise ToolError(f"Writes are only allowed on {sandbox}, not {repo}")
+        raise ToolError(f"Blocked: writes are only allowed on {sandbox}, not {repo}")
     _require_untainted()  # every write is an exit channel, not just comments
     bound = os.getenv("BOUND_ISSUE", "")
     if bound != "*" or os.getenv("UNSAFE_BASELINE") != "1":
