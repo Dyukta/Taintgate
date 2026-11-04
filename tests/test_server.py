@@ -192,6 +192,11 @@ def fake_github(monkeypatch):
     async def fake(path, method="GET", json=None, **params):
         if "/contents/" in path:
             return {"encoding": "base64", "content": base64.b64encode(b"TG-CANARY").decode()}
+        if path == "/search/issues":
+            return {"items": []}
+        if "/issues/" in path:
+            return {"number": 1, "title": "t", "state": "open", "html_url": "u", "labels": [],
+                    "user": {"login": "a"}, "body": "TG-CANARY", "comments": 0}
         return {"private": path.endswith("-private")}
 
     monkeypatch.setattr(server, "_github", fake)
@@ -216,6 +221,19 @@ async def test_taint_blocks_every_write_after_private_read(sandbox, fake_github,
     assert after.is_error is tainted
     if tainted:
         assert "taint" in after.content[0].text
+
+
+@pytest.mark.parametrize("tool, args", [("get_issue", {"number": 1}), ("search_issues", {"query": "x"})])
+@pytest.mark.parametrize("repo, tainted", [(REPO, False), ("me/Secret-private", True)])
+async def test_private_issue_reads_taint(sandbox, fake_github, monkeypatch, repo, tainted, tool, args):
+    monkeypatch.delenv("TAINT_TRACKING", raising=False)
+    monkeypatch.setenv("BOUND_REPO", "*")
+    monkeypatch.setenv("UNSAFE_BASELINE", "1")
+    async with Client(server) as client:
+        read = await client.call_tool(tool, {"repo": repo, **args})
+        write = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "TG-CANARY"})
+    assert not read.is_error, read.content
+    assert write.is_error is tainted
 
 
 async def test_taint_can_be_turned_off(sandbox, fake_github, monkeypatch):

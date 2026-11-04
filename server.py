@@ -90,6 +90,11 @@ def _check_write(repo: str) -> bool:
     return os.getenv("DRY_RUN", "true").lower() != "false"
 
 
+async def _taint_if_private(repo: str) -> None:
+    if (await _github(f"/repos/{repo}")).get("private", True):
+        _SESSION["tainted"] = True
+
+
 def _summary(i: dict[str, Any]) -> dict[str, Any]:
     return {
         "number": i["number"],
@@ -108,6 +113,7 @@ async def search_issues(
 ) -> list[IssueSummary]:
     _require_bound(repo)
     data = await _github("/search/issues", q=f"{query} repo:{repo} is:issue", per_page=limit)
+    await _taint_if_private(repo)
     own = f"{GITHUB_API}/repos/{repo}".lower()
     return [IssueSummary(**_summary(i)) for i in data["items"] if i["repository_url"].lower() == own]
 
@@ -118,6 +124,7 @@ async def get_issue(repo: Repo, number: Annotated[int, Field(ge=1)]) -> IssueDet
     i = await _github(f"/repos/{repo}/issues/{number}")
     if "pull_request" in i:
         raise ToolError(f"#{number} in {repo} is a pull request, not an issue")
+    await _taint_if_private(repo)
     return IssueDetail(**_summary(i), author=i["user"]["login"], body=i["body"] or "", comments=i["comments"])
 
 
@@ -130,8 +137,7 @@ async def get_file(
     f = await _github(f"/repos/{repo}/contents/{path}")
     if not isinstance(f, dict) or f.get("encoding") != "base64":
         raise ToolError(f"{path} in {repo} is not a file")
-    if (await _github(f"/repos/{repo}")).get("private", True):
-        _SESSION["tainted"] = True
+    await _taint_if_private(repo)
     return FileContent(repo=repo, path=path, content=base64.b64decode(f["content"]).decode(errors="replace")[:20000])
 
 
