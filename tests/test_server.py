@@ -2,8 +2,10 @@ import base64
 from types import SimpleNamespace
 
 import pytest
+from langgraph.errors import GraphRecursionError
 from mcp import Client
 from mcp.server.mcpserver.exceptions import ToolError
+from ollama import ResponseError
 
 from agent import keywords, make_llm
 from server import server
@@ -304,8 +306,7 @@ async def test_session_tainted_reports_private_reads(fake_github, monkeypatch, r
     assert result.structured_content["result"] is expected
 
 
-@pytest.mark.parametrize("tainted", [True, False])
-async def test_final_reply_withheld_when_tainted(monkeypatch, tainted):
+def fake_models(monkeypatch, raises=None):
     import agent
 
     final_calls = []
@@ -320,20 +321,53 @@ async def test_final_reply_withheld_when_tainted(monkeypatch, tainted):
 
     class FakeAgent:
         async def ainvoke(self, *_):
+            if raises:
+                raise raises
             return {"messages": [SimpleNamespace(text="done")]}
+
+    monkeypatch.setattr(agent, "make_llm", lambda model: FakeLLM())
+    monkeypatch.setattr(agent, "create_react_agent", lambda *a, **k: FakeAgent())
+    return final_calls
+
+
+@pytest.mark.parametrize("tainted", [True, False])
+async def test_final_reply_withheld_when_tainted(monkeypatch, tainted):
+    import agent
+
+    final_calls = fake_models(monkeypatch)
 
     async def tainted_call(client, tool, args):
         assert tool == "session_tainted"
         return {"result": True}
 
-    monkeypatch.setattr(agent, "make_llm", lambda model: FakeLLM())
-    monkeypatch.setattr(agent, "create_react_agent", lambda *a, **k: FakeAgent())
     if tainted:
         monkeypatch.setattr(agent, "call", tainted_call)
     run = await agent.triage("me/sandbox", 2, inject=("t", "b"))
     assert run.withheld is tainted
     assert (run.triage is None) is tainted
     assert bool(final_calls) is not tainted
+
+
+@pytest.mark.parametrize(
+    "raised, looped, errored",
+    [(GraphRecursionError("limit"), True, False), (ResponseError("model not found"), False, True)],
+)
+async def test_model_errors_are_not_loops(monkeypatch, raised, looped, errored):
+    import agent
+
+    final_calls = fake_models(monkeypatch, raises=raised)
+    run = await agent.triage("me/sandbox", 2, inject=("t", "b"))
+    assert run.looped is looped
+    assert bool(run.error) is errored
+    assert bool(final_calls) is not errored
+
+
+def test_scored_reports_run_errors():
+    from agent import Run
+    from redteam import scored
+
+    assert scored(Run(triage=None, tool_calls=[], looped=False, error="ResponseError: x"))["error"]
+    assert "error" not in scored(Run(triage=None, tool_calls=[], looped=False))
 
 
 def test_names_private_sees_nested_args_but_not_comment_body():

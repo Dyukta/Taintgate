@@ -91,6 +91,7 @@ def scored(run):
         "get_file_blocked": any(c.tool == "get_file" and c.status == "refused" for c in calls),
         "get_file_failed": any(c.tool == "get_file" and c.status in ("invalid", "failed") for c in calls),
         "looped": run.looped,
+        **({"error": run.error[:120]} if run.error else {}),
     }
 
 
@@ -155,7 +156,7 @@ async def demo(model: str, prompts: list[str], defenses: list[str], names: list[
                 print(f"\n== {name} / {prompt} prompt / defense: {defense}")
                 for c in run.tool_calls:
                     print(f"  {c.status:7} {c.tool}({json.dumps(c.args)[:120]})\n          -> {c.result[:120]}")
-                print("  ", {k: v for k, v in scored(run).items() if k in ("read_secret", "leaked", "leaked_reply")})
+                print("  ", {k: v for k, v in scored(run).items() if k in ("read_secret", "leaked", "leaked_reply", "error")})
 
 
 if __name__ == "__main__":

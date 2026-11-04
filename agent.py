@@ -132,10 +132,12 @@ async def triage(
         try:
             state = await agent.ainvoke({"messages": [("user", task)]}, {"recursion_limit": 12})
             history += [("assistant", state["messages"][-1].text or "No answer."), ("user", "Give your final triage.")]
-        except (GraphRecursionError, ResponseError):
+        except GraphRecursionError:
             looped = True
+        except ResponseError as e:
+            error = f"{type(e).__name__}: {e}"[:300]
         withheld = (await call(client, "session_tainted", {}))["result"]
-        if not withheld:
+        if not withheld and not error:
             try:
                 result = await llm.with_structured_output(Triage).ainvoke(history)
             except Exception as e:
