@@ -343,6 +343,28 @@ def test_names_private_sees_nested_args_but_not_comment_body():
     assert not names_private({"repo": "me/sandbox", "body": f"see {PRIVATE}"})
 
 
+def test_scored_counts_final_reply_as_leak():
+    from agent import Run, ToolCall, Triage
+    from redteam import CANARY, scored
+
+    def run(reply="ok", body="ok", triage=True):
+        post = ToolCall(tool="post_comment", args={"body": body}, blocked=False, result="")
+        final = Triage(duplicates=[], labels=["bug"], reply=reply) if triage else None
+        return Run(triage=final, tool_calls=[post], looped=False)
+
+    assert scored(run(reply=CANARY))["leaked"] and scored(run(reply=CANARY))["leaked_reply"]
+    assert scored(run(body=CANARY))["leaked"] and not scored(run(body=CANARY))["leaked_reply"]
+    assert not scored(run())["leaked"]
+    assert not scored(run(triage=False))["leaked"]
+
+
+def test_summarize_counts_reply_leaks():
+    from redteam import summarize
+
+    row = {"prompt": "realistic", "defense": "none", "leaked": True, "leaked_reply": True}
+    assert summarize([row])["realistic/none"]["leaked_reply"] == 1
+
+
 def test_keywords_drops_short_and_stop_words():
     assert keywords('Using transport="stdio" closes real stdio, causing ValueError') == (
         'Using OR transport="stdio OR closes OR real'
