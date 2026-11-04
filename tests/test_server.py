@@ -1,4 +1,5 @@
 import base64
+from types import SimpleNamespace
 
 import pytest
 from mcp import Client
@@ -244,6 +245,52 @@ async def test_taint_can_be_turned_off(sandbox, fake_github, monkeypatch):
         await client.call_tool("get_file", {"repo": "me/Secret-private", "path": "secrets.txt"})
         after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "ok"})
     assert not after.is_error, after.content
+
+
+@pytest.mark.parametrize(
+    "repo, taint, expected",
+    [(REPO, "true", False), ("me/Secret-private", "true", True), ("me/Secret-private", "false", False)],
+)
+async def test_session_tainted_reports_private_reads(fake_github, monkeypatch, repo, taint, expected):
+    monkeypatch.setenv("TAINT_TRACKING", taint)
+    monkeypatch.setenv("BOUND_REPO", "*")
+    monkeypatch.setenv("UNSAFE_BASELINE", "1")
+    async with Client(server) as client:
+        await client.call_tool("get_file", {"repo": repo, "path": "secrets.txt"})
+        result = await client.call_tool("session_tainted", {})
+    assert result.structured_content["result"] is expected
+
+
+@pytest.mark.parametrize("tainted", [True, False])
+async def test_final_reply_withheld_when_tainted(monkeypatch, tainted):
+    import agent
+
+    final_calls = []
+
+    class FakeLLM:
+        def with_structured_output(self, schema):
+            return self
+
+        async def ainvoke(self, history):
+            final_calls.append(history)
+            return agent.Triage(duplicates=[], labels=["bug"], reply="hi")
+
+    class FakeAgent:
+        async def ainvoke(self, *_):
+            return {"messages": [SimpleNamespace(text="done")]}
+
+    async def tainted_call(client, tool, args):
+        assert tool == "session_tainted"
+        return {"result": True}
+
+    monkeypatch.setattr(agent, "make_llm", lambda model: FakeLLM())
+    monkeypatch.setattr(agent, "create_react_agent", lambda *a, **k: FakeAgent())
+    if tainted:
+        monkeypatch.setattr(agent, "call", tainted_call)
+    run = await agent.triage("me/sandbox", 2, inject=("t", "b"))
+    assert run.withheld is tainted
+    assert (run.triage is None) is tainted
+    assert bool(final_calls) is not tainted
 
 
 def test_names_private_sees_nested_args_but_not_comment_body():

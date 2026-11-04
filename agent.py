@@ -49,6 +49,7 @@ class Run(BaseModel):
     tool_calls: list[ToolCall]
     looped: bool
     error: str | None = None
+    withheld: bool = False
 
 
 def make_llm(model: str):
@@ -121,14 +122,16 @@ async def triage(
             history += [("assistant", state["messages"][-1].text or "No answer."), ("user", "Give your final triage.")]
         except (GraphRecursionError, ResponseError):
             looped = True
-        try:
-            result = await llm.with_structured_output(Triage).ainvoke(history)
-        except Exception as e:
-            error = f"{type(e).__name__}: {e}"[:300]
+        withheld = (await call(client, "session_tainted", {}))["result"]
+        if not withheld:
+            try:
+                result = await llm.with_structured_output(Triage).ainvoke(history)
+            except Exception as e:
+                error = f"{type(e).__name__}: {e}"[:300]
     if result:
         allowed = {i["number"] for i in found["result"]} - {number}
         result.duplicates = [n for n in result.duplicates if n in allowed]
-    return Run(triage=result, tool_calls=log, looped=looped, error=error)
+    return Run(triage=result, tool_calls=log, looped=looped, error=error, withheld=withheld)
 
 
 if __name__ == "__main__":

@@ -31,9 +31,13 @@ def _require_bound(repo: str) -> None:
         raise ToolError(f"Blocked: session is bound to {bound} and cannot access {repo}")
 
 
-def _require_untainted() -> None:
+def _tainted() -> bool:
     # On unless explicitly turned off.
-    if os.getenv("TAINT_TRACKING", "true").lower() != "false" and _SESSION.get("tainted"):
+    return os.getenv("TAINT_TRACKING", "true").lower() != "false" and _SESSION.get("tainted", False)
+
+
+def _require_untainted() -> None:
+    if _tainted():
         raise ToolError("Blocked: cannot write after reading a private repo in this session (taint tracking)")
 
 
@@ -167,6 +171,11 @@ async def post_comment(
         return WriteResult(dry_run=True, action=f"would {action}")
     c = await _github(f"/repos/{repo}/issues/{number}/comments", "POST", {"body": body})
     return WriteResult(dry_run=False, action=action, url=c["html_url"])
+
+
+@server.tool(description="Whether this session has read private data.")
+async def session_tainted() -> bool:
+    return _tainted()
 
 
 if __name__ == "__main__":
