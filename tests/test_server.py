@@ -142,6 +142,7 @@ async def test_traversal_rejected_by_validation(monkeypatch, repo, path):
 def sandbox(monkeypatch):
     monkeypatch.setenv("SANDBOX_REPO", "me/Sandbox")
     monkeypatch.setenv("BOUND_REPO", "me/Sandbox")
+    monkeypatch.setenv("BOUND_ISSUE", "1")
     monkeypatch.setenv("DRY_RUN", "true")
 
 
@@ -245,6 +246,47 @@ async def test_taint_can_be_turned_off(sandbox, fake_github, monkeypatch):
         await client.call_tool("get_file", {"repo": "me/Secret-private", "path": "secrets.txt"})
         after = await client.call_tool("post_comment", {"repo": "me/sandbox", "number": 1, "body": "ok"})
     assert not after.is_error, after.content
+
+
+@pytest.mark.parametrize("tool, args", WRITES)
+async def test_write_blocked_on_other_issue(sandbox, tool, args):
+    result = await call(tool, {"repo": "me/sandbox", "number": 2, **args})
+    assert result.is_error
+    assert "bound to issue 1" in result.content[0].text
+
+
+@pytest.mark.parametrize("tool, args", WRITES)
+async def test_write_blocked_without_bound_issue(sandbox, monkeypatch, tool, args):
+    monkeypatch.delenv("BOUND_ISSUE")
+    result = await call(tool, {"repo": "me/sandbox", "number": 1, **args})
+    assert result.is_error
+    assert "(not set)" in result.content[0].text
+
+
+@pytest.mark.parametrize("tool, args", WRITES)
+async def test_wildcard_issue_needs_unsafe_flag(sandbox, monkeypatch, tool, args):
+    monkeypatch.setenv("BOUND_ISSUE", "*")
+    monkeypatch.delenv("UNSAFE_BASELINE", raising=False)
+    assert (await call(tool, {"repo": "me/sandbox", "number": 1, **args})).is_error
+
+
+async def test_wildcard_issue_with_flag_has_no_limit(sandbox, monkeypatch):
+    monkeypatch.setenv("BOUND_ISSUE", "*")
+    monkeypatch.setenv("UNSAFE_BASELINE", "1")
+    write = {"repo": "me/sandbox", "number": 999, "body": "hi"}
+    async with Client(server) as client:
+        results = [await client.call_tool("post_comment", write) for _ in range(6)]
+    assert not any(r.is_error for r in results)
+
+
+async def test_write_cap_counts_only_allowed_writes(sandbox):
+    label = ("add_label", {"repo": "me/sandbox", "number": 1, "label": "bug"})
+    comment = ("post_comment", {"repo": "me/sandbox", "number": 1, "body": "hi"})
+    other_issue = ("post_comment", {"repo": "me/sandbox", "number": 2, "body": "hi"})
+    async with Client(server) as client:
+        results = [await client.call_tool(*c) for c in [other_issue, label, label, label, comment, label]]
+    assert [r.is_error for r in results] == [True, False, False, False, False, True]
+    assert "4 writes" in results[-1].content[0].text
 
 
 @pytest.mark.parametrize(

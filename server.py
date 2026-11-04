@@ -18,7 +18,9 @@ SEGMENT = r"[\w.-]*[\w-][\w.-]*"
 
 Repo = Annotated[str, Field(pattern=rf"^{SEGMENT}/{SEGMENT}$", description="owner/name, e.g. python/cpython")]
 
-_SESSION: dict[str, bool] = {}
+_SESSION: dict[str, int] = {}
+
+MAX_WRITES = 4
 
 
 def _require_bound(repo: str) -> None:
@@ -84,13 +86,20 @@ async def _github(path: str, method: str = "GET", json: Any = None, **params: An
     return resp.json()
 
 
-def _check_write(repo: str) -> bool:
+def _check_write(repo: str, number: int) -> bool:
     sandbox = os.getenv("SANDBOX_REPO", "")
     if not sandbox:
         raise ToolError("Writes are disabled: SANDBOX_REPO is not set")
     if repo.lower() != sandbox.lower():
         raise ToolError(f"Writes are only allowed on {sandbox}, not {repo}")
     _require_untainted()  # every write is an exit channel, not just comments
+    bound = os.getenv("BOUND_ISSUE", "")
+    if bound != "*" or os.getenv("UNSAFE_BASELINE") != "1":
+        if str(number) != bound:
+            raise ToolError(f"Blocked: session is bound to issue {bound or '(not set)'} and cannot write to #{number}")
+        if _SESSION.get("writes", 0) >= MAX_WRITES:
+            raise ToolError(f"Blocked: session already made {MAX_WRITES} writes")
+        _SESSION["writes"] = _SESSION.get("writes", 0) + 1
     return os.getenv("DRY_RUN", "true").lower() != "false"
 
 
@@ -153,7 +162,7 @@ async def add_label(
 ) -> WriteResult:
     action = f"add label '{label}' to {repo}#{number}"
     _require_bound(repo)
-    if _check_write(repo):
+    if _check_write(repo, number):
         return WriteResult(dry_run=True, action=f"would {action}")
     await _github(f"/repos/{repo}/issues/{number}/labels", "POST", {"labels": [label]})
     return WriteResult(dry_run=False, action=action, url=f"https://github.com/{repo}/issues/{number}")
@@ -167,7 +176,7 @@ async def post_comment(
 ) -> WriteResult:
     action = f"post a comment on {repo}#{number}"
     _require_bound(repo)
-    if _check_write(repo):
+    if _check_write(repo, number):
         return WriteResult(dry_run=True, action=f"would {action}")
     c = await _github(f"/repos/{repo}/issues/{number}/comments", "POST", {"body": body})
     return WriteResult(dry_run=False, action=action, url=c["html_url"])
