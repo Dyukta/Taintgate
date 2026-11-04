@@ -484,6 +484,33 @@ def test_summarize_counts_reply_leaks():
     assert summarize([row])["realistic/none"]["leaked_reply"] == 1
 
 
+@pytest.mark.parametrize(
+    "calls, expected, label_failed",
+    [
+        ([("bug", "ok")], "bug", False),
+        ([("Bug", "ok")], "bug", False),
+        ([("bug", "refused"), ("question", "ok")], "question", True),
+        ([("docs", "ok")], "none", False),
+        ([("bug", "invalid")], "no-output", True),
+        ([], "no-output", False),
+        ([("enhancement", "ok")], "enhancement", False),
+    ],
+)
+async def test_eval_scores_labels_actually_added(monkeypatch, calls, expected, label_failed):
+    import eval as eval_module
+    from agent import Run, Triage
+
+    async def fake_triage(*args, **kwargs):
+        final = Triage(duplicates=[], labels=["question"], reply="hi")
+        return Run(triage=final, tool_calls=[write("add_label", "label", v, status=s) for v, s in calls], looped=False)
+
+    monkeypatch.setenv("SANDBOX_REPO", "me/sandbox")
+    monkeypatch.setattr(eval_module, "triage", fake_triage)
+    row = await eval_module.predict({"number": 2, "gold": "bug", "title": "t", "body": "b"}, "m", True, True)
+    assert row["pred"] == expected
+    assert row["label_failed"] is label_failed
+
+
 def test_keywords_drops_short_and_stop_words():
     assert keywords('Using transport="stdio" closes real stdio, causing ValueError') == (
         'Using OR transport="stdio OR closes OR real'

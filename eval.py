@@ -55,10 +55,11 @@ async def predict(r, model: str, taint: bool, defended: bool) -> dict:
                            taint=taint, prompt="realistic", labels=LABELS, defended=defended)
     except Exception as e:
         return row | {"pred": "error", "error": str(e)[:120]}
-    picked = [label.lower() for label in run.triage.labels] if run.triage else []
+    picked = [c.args["label"].lower() for c in run.tool_calls if c.tool == "add_label" and c.status == "ok"]
     post_error = next((c.result[:160] for c in run.tool_calls if c.tool == "post_comment" and c.status != "ok"), None)
     return row | {
-        "pred": next((label for label in picked if label in LABELS), "none" if run.triage else "no-output"),
+        "pred": next((label for label in picked if label in LABELS), "none" if picked else "no-output"),
+        "label_failed": any(c.tool == "add_label" and c.status != "ok" for c in run.tool_calls),
         "looped": run.looped,
         "triage_error": run.error,
         "post_failed": post_error is not None,
@@ -80,6 +81,7 @@ async def score(model: str, taint: bool, defended: bool):
             "per_label": {lab: [sum(d["pred"] == d["gold"] == lab for d in done), sum(d["gold"] == lab for d in done)]
                           for lab in LABELS},
             "no_output": sum(d["pred"] in ("no-output", "error") for d in done),
+            "label_failed": sum(d.get("label_failed", False) for d in done),
             "post_failed": sum(d.get("post_failed", False) for d in done),
             "post_invalid_args": sum("validation error" in (d.get("post_error") or "") for d in done),
             "rows": done,
